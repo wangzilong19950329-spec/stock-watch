@@ -1,0 +1,10 @@
+{
+  "name": "stock-watch-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "bridge": "node scripts/deepseek-web-bridge.js",
+    "bridge:check": "node --check scripts/deepseek-web-client.js && node --check scripts/deepseek-web-bridge.js && node --check scripts/deepseek-web-search.js"
+  }
+}

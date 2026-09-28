@@ -1,0 +1,642 @@
+{
+  "source_commit": "eb674b736589fe8ddc716c15af3b400342286f57",
+  "files": [
+    {
+      "path": "src/main/java/com/aimeeting/room/controller/StockWatchAiRuleController.java",
+      "source": "src/main/java/com/aimeeting/room/controller/StockWatchAiRuleController.java",
+      "source_sha256": "897bdf723145f56235d3722c4b1721313fe938f155f11811da9bd6d1c86735fd",
+      "result_sha256": "897bdf723145f56235d3722c4b1721313fe938f155f11811da9bd6d1c86735fd",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/controller/StockWatchController.java",
+      "source": "src/main/java/com/aimeeting/room/controller/StockWatchController.java",
+      "source_sha256": "20e3846330c0adb7cdb8947690cd70dd655154264c24fbbfb91ec007aaf32c3a",
+      "result_sha256": "20e3846330c0adb7cdb8947690cd70dd655154264c24fbbfb91ec007aaf32c3a",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/controller/StockWatchDeliveryController.java",
+      "source": "src/main/java/com/aimeeting/room/controller/StockWatchDeliveryController.java",
+      "source_sha256": "88d576c87a3b3477afdcb8cd9fe0db1fd30f75ea1d74ef084790a33260c02194",
+      "result_sha256": "88d576c87a3b3477afdcb8cd9fe0db1fd30f75ea1d74ef084790a33260c02194",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/controller/StockWatchFcCardController.java",
+      "source": "src/main/java/com/aimeeting/room/controller/StockWatchFcCardController.java",
+      "source_sha256": "f9b4d11a5d0226af4b1ca8df360bd89616987b2fcc607b3cd42d3f7282025df4",
+      "result_sha256": "f9b4d11a5d0226af4b1ca8df360bd89616987b2fcc607b3cd42d3f7282025df4",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/controller/StockWatchListController.java",
+      "source": "src/main/java/com/aimeeting/room/controller/StockWatchListController.java",
+      "source_sha256": "27a2ae6f4eca3a22cedadf0075f936f36c2f41d4cec8f53701be9acf7a974b31",
+      "result_sha256": "27a2ae6f4eca3a22cedadf0075f936f36c2f41d4cec8f53701be9acf7a974b31",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/controller/StockWatchMonitorController.java",
+      "source": "src/main/java/com/aimeeting/room/controller/StockWatchMonitorController.java",
+      "source_sha256": "b3df5adaad7934d224dd0d4f38590752c84c5e17225bdb3a8d54310e706b187c",
+      "result_sha256": "b3df5adaad7934d224dd0d4f38590752c84c5e17225bdb3a8d54310e706b187c",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/controller/StockWatchNotificationController.java",
+      "source": "src/main/java/com/aimeeting/room/controller/StockWatchNotificationController.java",
+      "source_sha256": "265eca1641a82097e27cc42f37e8794522473771e51805ca9f2a1ae40da9ce25",
+      "result_sha256": "265eca1641a82097e27cc42f37e8794522473771e51805ca9f2a1ae40da9ce25",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/controller/StockWatchSignalController.java",
+      "source": "src/main/java/com/aimeeting/room/controller/StockWatchSignalController.java",
+      "source_sha256": "c08c2561255b3e6096c658cabf3549e2d0f0ab48909efbd3ef59ff82ef340ea4",
+      "result_sha256": "c08c2561255b3e6096c658cabf3549e2d0f0ab48909efbd3ef59ff82ef340ea4",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/controller/StockWatchTechnicalAnalysisController.java",
+      "source": "src/main/java/com/aimeeting/room/controller/StockWatchTechnicalAnalysisController.java",
+      "source_sha256": "e8bfb7d6ed38e7fe44bce58ead57eb161d21a6b26333bcd60b7c9aca90f09d18",
+      "result_sha256": "e8bfb7d6ed38e7fe44bce58ead57eb161d21a6b26333bcd60b7c9aca90f09d18",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/service/StockQuoteService.java",
+      "source": "src/main/java/com/aimeeting/room/service/StockQuoteService.java",
+      "source_sha256": "98faabb0a396420a14e5bac4b877bc3c5396ad2adf14921cf00c69b1364a0527",
+      "result_sha256": "98faabb0a396420a14e5bac4b877bc3c5396ad2adf14921cf00c69b1364a0527",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/service/StockWatchAiJudgeService.java",
+      "source": "src/main/java/com/aimeeting/room/service/StockWatchAiJudgeService.java",
+      "source_sha256": "b5fa7328e2f16dbbab9495cc348764fced68da69c850db72ad1e73abd28d22e5",
+      "result_sha256": "b5fa7328e2f16dbbab9495cc348764fced68da69c850db72ad1e73abd28d22e5",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/service/StockWatchAiRuleService.java",
+      "source": "src/main/java/com/aimeeting/room/service/StockWatchAiRuleService.java",
+      "source_sha256": "5a6a5cdd8bfb3ccb8b6b5640e1e35a5de7e5dc297f55cf4be342acd8b8676656",
+      "result_sha256": "dc17f1fac53b62d680dfecbfffedb8b32cecae98c8621ede6b8c2b5d8e2a000d",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/service/StockWatchDeliveryService.java",
+      "source": "src/main/java/com/aimeeting/room/service/StockWatchDeliveryService.java",
+      "source_sha256": "5b316e7c39994a72737e3e305016f401edff500ca3f77ebeee5fbd52fc407702",
+      "result_sha256": "5b316e7c39994a72737e3e305016f401edff500ca3f77ebeee5fbd52fc407702",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/service/StockWatchFcCardService.java",
+      "source": "src/main/java/com/aimeeting/room/service/StockWatchFcCardService.java",
+      "source_sha256": "0506ef6a1c3720d2a0a2b3cab609cb1a2c183dcddc3071409afc0ffc30d71cc1",
+      "result_sha256": "0506ef6a1c3720d2a0a2b3cab609cb1a2c183dcddc3071409afc0ffc30d71cc1",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/service/StockWatchListService.java",
+      "source": "src/main/java/com/aimeeting/room/service/StockWatchListService.java",
+      "source_sha256": "76405334d5d465ad2b9d0f42c64b61923ae88cef430f0217864550211bcf57b2",
+      "result_sha256": "76405334d5d465ad2b9d0f42c64b61923ae88cef430f0217864550211bcf57b2",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/service/StockWatchMonitorService.java",
+      "source": "src/main/java/com/aimeeting/room/service/StockWatchMonitorService.java",
+      "source_sha256": "8631c1556aa0a1ca8face2119e7d97689d014e2ad35157387bbd5491e57ab219",
+      "result_sha256": "cef5a76b435e0f9fa426db24689bd8beec8c560b49af850dde4ea4dbb01f9085",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/service/StockWatchTechnicalAnalysisService.java",
+      "source": "src/main/java/com/aimeeting/room/service/StockWatchTechnicalAnalysisService.java",
+      "source_sha256": "084792e2b0144ea4b138e6d1aa5113d64e0b8e79f2ad27bf3d86b45dff49e87c",
+      "result_sha256": "084792e2b0144ea4b138e6d1aa5113d64e0b8e79f2ad27bf3d86b45dff49e87c",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/dao/StockWatchDeliveryConfigMapper.java",
+      "source": "src/main/java/com/aimeeting/room/dao/StockWatchDeliveryConfigMapper.java",
+      "source_sha256": "4104d311c2554e43120839653a48631515150de8807c7787c6bd3348ff33d207",
+      "result_sha256": "4104d311c2554e43120839653a48631515150de8807c7787c6bd3348ff33d207",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/dao/StockWatchDeliveryLogMapper.java",
+      "source": "src/main/java/com/aimeeting/room/dao/StockWatchDeliveryLogMapper.java",
+      "source_sha256": "4f2d505ba086c0204ae6169efe591c74415c10a39f319573c424ea4d9a10feb5",
+      "result_sha256": "4f2d505ba086c0204ae6169efe591c74415c10a39f319573c424ea4d9a10feb5",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/dao/StockWatchFcCardMapper.java",
+      "source": "src/main/java/com/aimeeting/room/dao/StockWatchFcCardMapper.java",
+      "source_sha256": "375359dee27368f13268a4c0494bf9f79924edcce5cbe245a0cdb3b2b2b09cfc",
+      "result_sha256": "375359dee27368f13268a4c0494bf9f79924edcce5cbe245a0cdb3b2b2b09cfc",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/dao/StockWatchItemMapper.java",
+      "source": "src/main/java/com/aimeeting/room/dao/StockWatchItemMapper.java",
+      "source_sha256": "54c844b5e47f2a40d6b9a7f716f16be46b09c34a4bd48f0d3962f7ba354c988d",
+      "result_sha256": "54c844b5e47f2a40d6b9a7f716f16be46b09c34a4bd48f0d3962f7ba354c988d",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/dao/StockWatchTechnicalAnalysisMapper.java",
+      "source": "src/main/java/com/aimeeting/room/dao/StockWatchTechnicalAnalysisMapper.java",
+      "source_sha256": "aba84b291a1abf2ef8c94d0644de7cb193be4986024acea814cf11054b99abc6",
+      "result_sha256": "aba84b291a1abf2ef8c94d0644de7cb193be4986024acea814cf11054b99abc6",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/dao/StockWatchTechnicalSessionMapper.java",
+      "source": "src/main/java/com/aimeeting/room/dao/StockWatchTechnicalSessionMapper.java",
+      "source_sha256": "0faeaf00f5898f8078954754a19f273cbfb3d2f5d8bce91749450e725f48976f",
+      "result_sha256": "0faeaf00f5898f8078954754a19f273cbfb3d2f5d8bce91749450e725f48976f",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/entity/StockWatchDeliveryConfig.java",
+      "source": "src/main/java/com/aimeeting/room/entity/StockWatchDeliveryConfig.java",
+      "source_sha256": "f18ce1d6802a95850aa81e5b8fbe1521f08f488ed8a6438e606777c1163414cb",
+      "result_sha256": "f18ce1d6802a95850aa81e5b8fbe1521f08f488ed8a6438e606777c1163414cb",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/entity/StockWatchDeliveryLog.java",
+      "source": "src/main/java/com/aimeeting/room/entity/StockWatchDeliveryLog.java",
+      "source_sha256": "645135dc3817b6451701447564366cd69afd5d5780fdbfb435085b4f7529df36",
+      "result_sha256": "645135dc3817b6451701447564366cd69afd5d5780fdbfb435085b4f7529df36",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/entity/StockWatchFcCard.java",
+      "source": "src/main/java/com/aimeeting/room/entity/StockWatchFcCard.java",
+      "source_sha256": "3ee39228ca3cdf2ef7a87f18743928a7f5651e4173ddb7475b433982285d47a2",
+      "result_sha256": "3ee39228ca3cdf2ef7a87f18743928a7f5651e4173ddb7475b433982285d47a2",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/entity/StockWatchItem.java",
+      "source": "src/main/java/com/aimeeting/room/entity/StockWatchItem.java",
+      "source_sha256": "f433617cb35c6bd22bf59ffae61e060dbd545ad20aebb646d4f94ff48af89e0c",
+      "result_sha256": "f433617cb35c6bd22bf59ffae61e060dbd545ad20aebb646d4f94ff48af89e0c",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/entity/StockWatchTechnicalAnalysis.java",
+      "source": "src/main/java/com/aimeeting/room/entity/StockWatchTechnicalAnalysis.java",
+      "source_sha256": "d93380f2b9fef14ed29837fef0c9c0c287e425ec91456faf632ec8882ae841b7",
+      "result_sha256": "d93380f2b9fef14ed29837fef0c9c0c287e425ec91456faf632ec8882ae841b7",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/entity/StockWatchTechnicalSession.java",
+      "source": "src/main/java/com/aimeeting/room/entity/StockWatchTechnicalSession.java",
+      "source_sha256": "77a28de1de0b6d1a10de843f0e2ce09a36ee4075218d4b7b89566cf528a72bd2",
+      "result_sha256": "77a28de1de0b6d1a10de843f0e2ce09a36ee4075218d4b7b89566cf528a72bd2",
+      "change": "Preserved stock-watch behavior; isolated fallback runtime directory"
+    },
+    {
+      "path": "src/main/resources/mapper/StockWatchDeliveryConfigMapper.xml",
+      "source": "src/main/resources/mapper/StockWatchDeliveryConfigMapper.xml",
+      "source_sha256": "01af08956a0aaef4d49aac59120525d5d9c440bb6d694453b5f520238af79dc0",
+      "result_sha256": "01af08956a0aaef4d49aac59120525d5d9c440bb6d694453b5f520238af79dc0",
+      "change": "Copied without business-logic changes"
+    },
+    {
+      "path": "src/main/resources/mapper/StockWatchDeliveryLogMapper.xml",
+      "source": "src/main/resources/mapper/StockWatchDeliveryLogMapper.xml",
+      "source_sha256": "ee48b7056869e3e5796105c4a160a03a9bd73ace279a2e09d9cf938a33d51c80",
+      "result_sha256": "ee48b7056869e3e5796105c4a160a03a9bd73ace279a2e09d9cf938a33d51c80",
+      "change": "Copied without business-logic changes"
+    },
+    {
+      "path": "src/main/resources/mapper/StockWatchFcCardMapper.xml",
+      "source": "src/main/resources/mapper/StockWatchFcCardMapper.xml",
+      "source_sha256": "7a4975c882070e1481a90fa6652c6bb5e095d46f0cced93d431fdd05b3bf21ae",
+      "result_sha256": "7a4975c882070e1481a90fa6652c6bb5e095d46f0cced93d431fdd05b3bf21ae",
+      "change": "Copied without business-logic changes"
+    },
+    {
+      "path": "src/main/resources/mapper/StockWatchItemMapper.xml",
+      "source": "src/main/resources/mapper/StockWatchItemMapper.xml",
+      "source_sha256": "b79beb7e62d99d0ccd55c273a230e34565d2973db8db6efd5bef317e89097df8",
+      "result_sha256": "b79beb7e62d99d0ccd55c273a230e34565d2973db8db6efd5bef317e89097df8",
+      "change": "Copied without business-logic changes"
+    },
+    {
+      "path": "src/main/resources/mapper/StockWatchTechnicalAnalysisMapper.xml",
+      "source": "src/main/resources/mapper/StockWatchTechnicalAnalysisMapper.xml",
+      "source_sha256": "7be107459dda4b4069e278c1d863090b0a7b5241097e11b0a96cc10fcbb4448d",
+      "result_sha256": "7be107459dda4b4069e278c1d863090b0a7b5241097e11b0a96cc10fcbb4448d",
+      "change": "Copied without business-logic changes"
+    },
+    {
+      "path": "src/main/resources/mapper/StockWatchTechnicalSessionMapper.xml",
+      "source": "src/main/resources/mapper/StockWatchTechnicalSessionMapper.xml",
+      "source_sha256": "ec19e44690dbc714881545930b2c8d6ba88ce54f7af6f01571d790fc73893b9d",
+      "result_sha256": "ec19e44690dbc714881545930b2c8d6ba88ce54f7af6f01571d790fc73893b9d",
+      "change": "Copied without business-logic changes"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/common/ApiResponse.java",
+      "source": "src/main/java/com/aimeeting/room/common/ApiResponse.java",
+      "source_sha256": "6d7df456b3b7b17ec63c1d21065635914a4ceda77d5e33554a5cbe0de7a19924",
+      "result_sha256": "6d7df456b3b7b17ec63c1d21065635914a4ceda77d5e33554a5cbe0de7a19924",
+      "change": "Shared auth/API-model dependency retained; runtime directory isolated"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/controller/AuthController.java",
+      "source": "src/main/java/com/aimeeting/room/controller/AuthController.java",
+      "source_sha256": "a6a83c952f7a1f45256ad717021744606b228d71c6030aab5223352e343227e9",
+      "result_sha256": "a6a83c952f7a1f45256ad717021744606b228d71c6030aab5223352e343227e9",
+      "change": "Shared auth/API-model dependency retained; runtime directory isolated"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/config/AuthInterceptor.java",
+      "source": "src/main/java/com/aimeeting/room/config/AuthInterceptor.java",
+      "source_sha256": "bac603453aea9cc0b4fabdfc9cfc1b0632cb37fb96c007fef38a4c4eadae3c3c",
+      "result_sha256": "bac603453aea9cc0b4fabdfc9cfc1b0632cb37fb96c007fef38a4c4eadae3c3c",
+      "change": "Shared auth/API-model dependency retained; runtime directory isolated"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/config/TokenStore.java",
+      "source": "src/main/java/com/aimeeting/room/config/TokenStore.java",
+      "source_sha256": "f1fa32ccb309fdbc415fb29d087f8d629004f24c0c42b4885bd8c28419e32dbf",
+      "result_sha256": "f1fa32ccb309fdbc415fb29d087f8d629004f24c0c42b4885bd8c28419e32dbf",
+      "change": "Shared auth/API-model dependency retained; runtime directory isolated"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/config/WebMvcConfig.java",
+      "source": "src/main/java/com/aimeeting/room/config/WebMvcConfig.java",
+      "source_sha256": "e39ea9a6b60e4c1f8c6e96a518c68c27eb3ddfe7c64610d773ab69e5f7a6b020",
+      "result_sha256": "e39ea9a6b60e4c1f8c6e96a518c68c27eb3ddfe7c64610d773ab69e5f7a6b020",
+      "change": "Shared auth/API-model dependency retained; runtime directory isolated"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/config/ModelEntry.java",
+      "source": "src/main/java/com/aimeeting/room/config/ModelEntry.java",
+      "source_sha256": "222fd16f0653db4f1335dedf7b07558f9815d1b6187ae801ee8d19eef5919683",
+      "result_sha256": "222fd16f0653db4f1335dedf7b07558f9815d1b6187ae801ee8d19eef5919683",
+      "change": "Shared auth/API-model dependency retained; runtime directory isolated"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/config/ModelRegistryStore.java",
+      "source": "src/main/java/com/aimeeting/room/config/ModelRegistryStore.java",
+      "source_sha256": "a2ebea02f8aa85dcedb785363733c64f9583ce1bee4e1ef75cf2b6498fbbd771",
+      "result_sha256": "70520662af7064f90c7fce82c01df5b43d307947fa6c37fb2c1c999afffd1fae",
+      "change": "Shared auth/API-model dependency retained; runtime directory isolated"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/dao/AiUserMapper.java",
+      "source": "src/main/java/com/aimeeting/room/dao/AiUserMapper.java",
+      "source_sha256": "0904ba687ed449603636f9c68ab0427cc549b43dc4118457c52662ff98a7f8ad",
+      "result_sha256": "0904ba687ed449603636f9c68ab0427cc549b43dc4118457c52662ff98a7f8ad",
+      "change": "Shared auth/API-model dependency retained; runtime directory isolated"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/entity/AiUser.java",
+      "source": "src/main/java/com/aimeeting/room/entity/AiUser.java",
+      "source_sha256": "d16bc55b4ea8603e11a7e5745bb5a6cf3bf9359af0fd143265cc6eb3579daa46",
+      "result_sha256": "d16bc55b4ea8603e11a7e5745bb5a6cf3bf9359af0fd143265cc6eb3579daa46",
+      "change": "Shared auth/API-model dependency retained; runtime directory isolated"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/dto/LoginRequest.java",
+      "source": "src/main/java/com/aimeeting/room/dto/LoginRequest.java",
+      "source_sha256": "06b52185d6159ea957923fac3c170c442733d04c529125c9200fcf0e39e19d0f",
+      "result_sha256": "06b52185d6159ea957923fac3c170c442733d04c529125c9200fcf0e39e19d0f",
+      "change": "Shared auth/API-model dependency retained; runtime directory isolated"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/dto/ChatResult.java",
+      "source": "src/main/java/com/aimeeting/room/dto/ChatResult.java",
+      "source_sha256": "54734c966f7411c389d1241c2b75e11c3abd817ca81093d5aae8e61a7eec8e30",
+      "result_sha256": "54734c966f7411c389d1241c2b75e11c3abd817ca81093d5aae8e61a7eec8e30",
+      "change": "Shared auth/API-model dependency retained; runtime directory isolated"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/service/ai/AiModelRouter.java",
+      "source": "src/main/java/com/aimeeting/room/service/ai/AiModelRouter.java",
+      "source_sha256": "1f98889c089355a625b8eb5ad5a0dc2dd4e19d72a8c6b598d79d66831f6843f0",
+      "result_sha256": "1f98889c089355a625b8eb5ad5a0dc2dd4e19d72a8c6b598d79d66831f6843f0",
+      "change": "Shared auth/API-model dependency retained; runtime directory isolated"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/service/ai/AiModelClient.java",
+      "source": "src/main/java/com/aimeeting/room/service/ai/AiModelClient.java",
+      "source_sha256": "8d69d39455368ba48acdc34c8bc93223400942801fb5c0546cffd5daa14d4900",
+      "result_sha256": "8d69d39455368ba48acdc34c8bc93223400942801fb5c0546cffd5daa14d4900",
+      "change": "Shared auth/API-model dependency retained; runtime directory isolated"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/service/ai/GenericAiClient.java",
+      "source": "src/main/java/com/aimeeting/room/service/ai/GenericAiClient.java",
+      "source_sha256": "239bcb46ad2ef360e21b777909c0a39531498167cc2ecb577689d6c74ef0228f",
+      "result_sha256": "239bcb46ad2ef360e21b777909c0a39531498167cc2ecb577689d6c74ef0228f",
+      "change": "Shared auth/API-model dependency retained; runtime directory isolated"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/service/ai/WebSearchService.java",
+      "source": "src/main/java/com/aimeeting/room/service/ai/WebSearchService.java",
+      "source_sha256": "01293ddbdbb63d72e945f67127282b7e1e9dce55ade8ace35fdde550d805b1ca",
+      "result_sha256": "01293ddbdbb63d72e945f67127282b7e1e9dce55ade8ace35fdde550d805b1ca",
+      "change": "Shared auth/API-model dependency retained; runtime directory isolated"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/config/AiModelProperties.java",
+      "source": "src/main/java/com/aimeeting/room/config/AiModelProperties.java",
+      "source_sha256": "b8d421e4c2ed6dc3051781cbe613a056c68079ed3c73a1ce61eccde4b0f1a88c",
+      "result_sha256": "50c6104313b5e95a305ec139902d2655c5cd713e0fe4fdb1f42bbbe831aec90e",
+      "change": "Removed meeting-only configuration; model properties unchanged"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/StockWatchApplication.java",
+      "source": "src/main/java/com/aimeeting/room/AiMeetingApplication.java",
+      "source_sha256": "bbe1c84637c7387c7a6f6a635451f9ef248af79e85fc0d9ecb1cf8bcd0b40727",
+      "result_sha256": "64005f61faa0e1c922d3d21b5af6e57a11e501d298fa53c9c890201d968f7ece",
+      "change": "Renamed application entry point"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/config/AppConfig.java",
+      "source": "src/main/java/com/aimeeting/room/config/AppConfig.java",
+      "source_sha256": "485e904a6e425a71e751feb3d9c50dd2fd62ac88ff8294caaf3c01e4d2f8f08f",
+      "result_sha256": "f93c26fb2b1d3be0d23c3aabcfca6aa57dafef4f7b6ad3f7214f770158a91a9f",
+      "change": "Retained password encoder; removed meetingExecutor"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/service/NotificationService.java",
+      "source": "src/main/java/com/aimeeting/room/service/NotificationService.java",
+      "source_sha256": "fcf1dfcb2c728c4668da49268eec416c5ed8fa63c0ba9d64d4c84fd6cc6d248d",
+      "result_sha256": "80c8dbe1047ba630c1f88d828a6d866798bfaa769935778dbdae2ef4be0bcbf2",
+      "change": "Retained email methods; removed meeting/ServerChan-only methods"
+    },
+    {
+      "path": "src/main/java/com/aimeeting/room/controller/ConfigController.java",
+      "source": "src/main/java/com/aimeeting/room/controller/ConfigController.java",
+      "source_sha256": "b9bf90d6dc7de3ee7ff7fdccdb751a27cf3864a954fce740a05a1de67ecd68a1",
+      "result_sha256": "9cba35b174d00ee16b492adb4a5fb7cb4d9ee96205505288343b9942bcc59f7e",
+      "change": "Retained model registry and mail-test APIs; removed meeting settings and stale verification claims"
+    },
+    {
+      "path": "src/main/resources/sql/schema-mysql.sql",
+      "source": "src/main/resources/sql/init.sql",
+      "source_sha256": "4180726da975a7ecdc09ed1cc19aafa0b8cbf3a9ac1e8e5ea21074edb3b03ae0",
+      "result_sha256": "32ffb2017406967239caa412e5a762d78593780f0130f1f6de247772e5fa64cd",
+      "change": "Extracted six stock-watch tables and auth schema; no CREATE DATABASE/USE/DROP/data imports"
+    },
+    {
+      "path": "src/main/resources/sql/schema-h2.sql",
+      "source": "src/main/resources/sql/schema-local.sql",
+      "source_sha256": "7b14c47daed578c2f51099a4219beb57999f2b052ffeca97625fd2e7a1fa5a1c",
+      "result_sha256": "00b2870a9a9eccd38fe0ee11f810cb4b8ef0ce0a029ff3142b3638ab3a1c38d6",
+      "change": "Standalone H2 equivalent, including FC card missing from upstream local schema"
+    },
+    {
+      "path": "pom.xml",
+      "source": "pom.xml",
+      "source_sha256": "16b6300b950accab870d01a74cd6793245c53fff1344c9497cd928d59ac3b471",
+      "result_sha256": "664d0500b5c09d8b3b0551768195c5f3e7daa94075ddda90e3fa94cc03ee03b1",
+      "change": "Changed application coordinates only; preserved dependency versions and Java 11"
+    },
+    {
+      "path": "frontend/package.json",
+      "source": "frontend/package.json",
+      "source_sha256": "390d1e8cf4aa9e9d46975da280db7685497218101bc8e35ee7fe3b19592d356c",
+      "result_sha256": "06ba9a124053bdd9e8dfb320cec8e61dbb2693f9e9fc3828a69f37ebb6091281",
+      "change": "Standalone shell/routes/data namespaces; stock-watch view and API behavior preserved"
+    },
+    {
+      "path": "frontend/package-lock.json",
+      "source": "frontend/package-lock.json",
+      "source_sha256": "c8db5356954803f7d05dc17f13083f43d11d73ebaaa6a8aae100aeff4655e9a6",
+      "result_sha256": "4fd12590593722f304828c2bfca5c6fa2b01782c0a979cc45909be8c501ea62f",
+      "change": "Standalone shell/routes/data namespaces; stock-watch view and API behavior preserved"
+    },
+    {
+      "path": "frontend/vite.config.js",
+      "source": "frontend/vite.config.js",
+      "source_sha256": "5da846d71fabcbc46b81180c23fbb67b81abddac8ae20af6a20a2c451e4ea67b",
+      "result_sha256": "21667f8fd51e056789625cb0fa09987c64d1c70fdb637e852ee4dcfc0889180e",
+      "change": "Standalone shell/routes/data namespaces; stock-watch view and API behavior preserved"
+    },
+    {
+      "path": "frontend/index.html",
+      "source": "frontend/index.html",
+      "source_sha256": "69c632540af626d14026351a21782e10c55015b02b3b0bf5a80d1f1011929532",
+      "result_sha256": "743a5d6c50e33aea9bf2a5a3124920d670dd78a7da9463ac6b238d479323e0f5",
+      "change": "Standalone shell/routes/data namespaces; stock-watch view and API behavior preserved"
+    },
+    {
+      "path": "frontend/src/main.js",
+      "source": "frontend/src/main.js",
+      "source_sha256": "6790040c0c25f3cfc2659f10b1ff5200d11dee57e6a4a46715b2e974b8d1eaec",
+      "result_sha256": "6790040c0c25f3cfc2659f10b1ff5200d11dee57e6a4a46715b2e974b8d1eaec",
+      "change": "Standalone shell/routes/data namespaces; stock-watch view and API behavior preserved"
+    },
+    {
+      "path": "frontend/src/App.vue",
+      "source": "frontend/src/App.vue",
+      "source_sha256": "b9697d7332acda2f40712b672485a9fd238e424daccde14290ff676e0d4d7676",
+      "result_sha256": "b9697d7332acda2f40712b672485a9fd238e424daccde14290ff676e0d4d7676",
+      "change": "Standalone shell/routes/data namespaces; stock-watch view and API behavior preserved"
+    },
+    {
+      "path": "frontend/src/api/http.js",
+      "source": "frontend/src/api/http.js",
+      "source_sha256": "042767f19cca6fd948d5dd973f5789b373aa13bd4cb92e19caa45effba4a1faa",
+      "result_sha256": "7d78073f75333dd319628b12559e3b16d4dce992cd2474dc470c52e38d75ba53",
+      "change": "Standalone shell/routes/data namespaces; stock-watch view and API behavior preserved"
+    },
+    {
+      "path": "frontend/src/api/auth.js",
+      "source": "frontend/src/api/auth.js",
+      "source_sha256": "a8cbe18abf0d5f6f3af22578df80d5f8787c2da60c6d4b839fccee28ada473f6",
+      "result_sha256": "a8cbe18abf0d5f6f3af22578df80d5f8787c2da60c6d4b839fccee28ada473f6",
+      "change": "Standalone shell/routes/data namespaces; stock-watch view and API behavior preserved"
+    },
+    {
+      "path": "frontend/src/api/config.js",
+      "source": "frontend/src/api/config.js",
+      "source_sha256": "ece9bfc2f4d4961d8cbd390a356ea1c42e3615292efb465a949ab9014a809961",
+      "result_sha256": "0054b7bb78618842b3ffa7e1a08ca1f481af36326107993efb55c471cf93ef21",
+      "change": "Standalone shell/routes/data namespaces; stock-watch view and API behavior preserved"
+    },
+    {
+      "path": "frontend/src/stores/user.js",
+      "source": "frontend/src/stores/user.js",
+      "source_sha256": "70dea09172209815d7ecea210544f300c9690449c2555fe1b4a60c5d4f7a0097",
+      "result_sha256": "70dea09172209815d7ecea210544f300c9690449c2555fe1b4a60c5d4f7a0097",
+      "change": "Standalone shell/routes/data namespaces; stock-watch view and API behavior preserved"
+    },
+    {
+      "path": "frontend/src/views/Login.vue",
+      "source": "frontend/src/views/Login.vue",
+      "source_sha256": "81cd7bed2d47025190b4e098d7b5bce4d19ebda0a13872fb5141e3bc3b1257b9",
+      "result_sha256": "98e8f322d06444e53b18a0c3e962fcf76613ee773a4a197002a956acc6bc8bff",
+      "change": "Standalone shell/routes/data namespaces; stock-watch view and API behavior preserved"
+    },
+    {
+      "path": "frontend/src/views/ModelConfig.vue",
+      "source": "frontend/src/views/ModelConfig.vue",
+      "source_sha256": "f12555e1277e99ea899059049bb3e74ebf8137bd7572a731244c859fbe121bd7",
+      "result_sha256": "9712b1264c8174d0d6d60a7cf5630c073bc95e07033773dc26556573cef12b7e",
+      "change": "Standalone shell/routes/data namespaces; stock-watch view and API behavior preserved"
+    },
+    {
+      "path": "frontend/src/views/StockWatch.vue",
+      "source": "frontend/src/views/StockWatch.vue",
+      "source_sha256": "f75f04faf4234e3ca1bd0c06279f8563fc26edaaf079b71900697b91fb712960",
+      "result_sha256": "610f241cb2bafcf896dc8ee0ae8786a4293a38f71a2a1ef9db4549f36d1566f6",
+      "change": "Standalone shell/routes/data namespaces; stock-watch view and API behavior preserved; redacted personal email UI placeholder"
+    },
+    {
+      "path": "scripts/deepseek-web-bridge.js",
+      "source": "scripts/deepseek-web-bridge.js",
+      "source_sha256": "1d2e3b0e9f2418bd5341c5d2d9e3f6ea1f1e4a876c0b2609cd9a1b943d2b3ac4",
+      "result_sha256": "e045f9902d25bd7fb302ef88841091972a24165b2fb91d6dd3a8d9ec08cfc5f4",
+      "change": "Isolated ports/profile/session storage; optional Chrome path; no personal-profile copying"
+    },
+    {
+      "path": "scripts/deepseek-web-client.js",
+      "source": "scripts/deepseek-web-client.js",
+      "source_sha256": "e5dab6ffed6206e717beaa59df01fc9ac6b9ed7fe5ce2867f4a1e8ad2c83cb1d",
+      "result_sha256": "841d67dfef182024ada1bdae576cd8b99f6d5b7b43329201b51c998d398af2da",
+      "change": "Isolated ports/profile/session storage; optional Chrome path; no personal-profile copying"
+    },
+    {
+      "path": "scripts/deepseek-web-search.js",
+      "source": "scripts/deepseek-web-search.js",
+      "source_sha256": "f3df7f390eb3fb585e34b000050b5fe1bca82b508ddb0521d9293711fb2fd357",
+      "result_sha256": "f3df7f390eb3fb585e34b000050b5fe1bca82b508ddb0521d9293711fb2fd357",
+      "change": "Isolated ports/profile/session storage; optional Chrome path; no personal-profile copying"
+    },
+    {
+      "path": ".env.example",
+      "source": null,
+      "source_sha256": null,
+      "result_sha256": "20f063246e4adfe6a34cd4d671e531e9c23a3a4440c79ffab7639b1265d0b308",
+      "change": "New standalone support file"
+    },
+    {
+      "path": ".gitignore",
+      "source": null,
+      "source_sha256": null,
+      "result_sha256": "e9d3ece412120671967aa2dc1ef69df864941b5b3875ef0fdba72f400e0d3760",
+      "change": "New standalone support file"
+    },
+    {
+      "path": "README.md",
+      "source": null,
+      "source_sha256": null,
+      "result_sha256": "eed5f3d6f33ae9967f9b60acc5a79904bdc7ef1853c15ac8181809d99e9ea424",
+      "change": "New standalone support file"
+    },
+    {
+      "path": "docs/EXTRACTION.md",
+      "source": null,
+      "source_sha256": null,
+      "result_sha256": "713719e1b37aeb44220ab4b586eec8a49e9ce7eb0f76ade2ccd1c0f64a3840f9",
+      "change": "New standalone support file"
+    },
+    {
+      "path": "docs/KNOWN_LIMITATIONS.md",
+      "source": null,
+      "source_sha256": null,
+      "result_sha256": "99d2e6a894abc36f520afb15067049631bd0395cdcc98069414d440c998f6d8b",
+      "change": "New standalone support file"
+    },
+    {
+      "path": "frontend/src/router/index.js",
+      "source": null,
+      "source_sha256": null,
+      "result_sha256": "9f2e519f67745b49edeb1bcc255f48573abf228a3f831f543d934539a3713f4b",
+      "change": "New standalone support file"
+    },
+    {
+      "path": "frontend/src/views/StockWatchLayout.vue",
+      "source": null,
+      "source_sha256": null,
+      "result_sha256": "cadaaf91d9cc8d23b9f673bdf119bdb516f623156d092469d037b2efa47bf342",
+      "change": "New standalone support file"
+    },
+    {
+      "path": "package.json",
+      "source": null,
+      "source_sha256": null,
+      "result_sha256": "eda1907a91ed6a2a60731d8965253a81b702ec15c08818c69e34d255ea30953e",
+      "change": "New standalone support file"
+    },
+    {
+      "path": "scripts/smoke-test.py",
+      "source": null,
+      "source_sha256": null,
+      "result_sha256": "dbd9791fb5b1368ffe246661d08da1065f921a62604c4e09680de82deb9b4ecc",
+      "change": "New standalone support file"
+    },
+    {
+      "path": "scripts/start-backend.sh",
+      "source": null,
+      "source_sha256": null,
+      "result_sha256": "2eb3fdf96866093ffa4f85d6309b64ccfa667f0fb1f367d0b4ca13c78d2c08ba",
+      "change": "New standalone support file"
+    },
+    {
+      "path": "scripts/start-bridge.sh",
+      "source": null,
+      "source_sha256": null,
+      "result_sha256": "91bc7de5255a888bae2a3b39dd484ba4c30c27a2c0f52d34d80208a5bfffdfd9",
+      "change": "New standalone support file"
+    },
+    {
+      "path": "scripts/start-frontend.sh",
+      "source": null,
+      "source_sha256": null,
+      "result_sha256": "a80377f3dee0d7b08175a0419bc3912c05e9fd24c1eb2bec2a4f5707a4c6c58e",
+      "change": "New standalone support file"
+    },
+    {
+      "path": "src/main/resources/application-mysql.yml",
+      "source": null,
+      "source_sha256": null,
+      "result_sha256": "b588cd1ed0e3c82bf4a358a4f4ab9f5c5c028bdf8be65962f1db0224363f7322",
+      "change": "New standalone support file"
+    },
+    {
+      "path": "src/main/resources/application.yml",
+      "source": null,
+      "source_sha256": null,
+      "result_sha256": "7330a69bf9da9640753623e82de24211a7bad3d36b143bd91f6301c6b6f9346f",
+      "change": "New standalone support file"
+    },
+    {
+      "path": "src/test/java/com/aimeeting/room/StockWatchExtractionTest.java",
+      "source": null,
+      "source_sha256": null,
+      "result_sha256": "58c92d76499e22dd4c80d659fab8caf5214382faa8163b6722376226cff05125",
+      "change": "New standalone support file"
+    },
+    {
+      "path": "tools/verify_extraction.py",
+      "source": null,
+      "source_sha256": null,
+      "result_sha256": "29dfd9929122624961541f615a4b3b4d4a1d5776a4ea7d2bfe55b635c50b38d0",
+      "change": "New standalone support file"
+    },
+    {
+      "path": "SOURCE_REVISION",
+      "source": null,
+      "source_sha256": null,
+      "result_sha256": "1c74db8be5b5c2d5c7cb6e299f83bd218f2ac5934f250f171779f01ff63790a8",
+      "change": "New standalone support file"
+    }
+  ]
+}
