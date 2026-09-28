@@ -1,0 +1,12 @@
+# Use a NEW dedicated schema, not the source project's database.
+spring:
+  datasource:
+    url: ${STOCK_WATCH_DB_URL:jdbc:mysql://127.0.0.1:3306/stock_watch?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai}
+    username: ${STOCK_WATCH_DB_USERNAME:stock_watch}
+    password: ${STOCK_WATCH_DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:sql/schema-mysql.sql
+      continue-on-error: false

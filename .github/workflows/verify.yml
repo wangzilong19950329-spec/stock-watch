@@ -1,0 +1,61 @@
+name: Verify standalone stock-watch
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test-root-only
+          MYSQL_DATABASE: stock_watch_test
+          MYSQL_USER: stock_watch_test
+          MYSQL_PASSWORD: test-db-only
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ptest-root-only"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Source boundary and provenance checks
+        run: python tools/verify_extraction.py
+      - name: H2 tests and package
+        run: mvn -B verify
+      - name: MySQL tests
+        env:
+          SPRING_PROFILES_ACTIVE: mysql
+          STOCK_WATCH_DB_URL: jdbc:mysql://127.0.0.1:3306/stock_watch_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+          STOCK_WATCH_DB_USERNAME: stock_watch_test
+          STOCK_WATCH_DB_PASSWORD: test-db-only
+        run: mvn -B test
+      - name: Frontend build
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund && npm run build
+      - name: Bridge and shell checks
+        run: |
+          npm run bridge:check
+          for f in scripts/*.sh; do bash -n "$f"; done
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: test-reports
+          path: target/surefire-reports/
+          retention-days: 7

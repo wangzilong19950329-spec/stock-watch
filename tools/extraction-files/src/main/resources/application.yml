@@ -1,0 +1,98 @@
+server:
+  address: ${STOCK_WATCH_BIND_ADDRESS:127.0.0.1}
+  port: ${STOCK_WATCH_PORT:8117}
+
+spring:
+  application:
+    name: stock-watch
+  datasource:
+    url: jdbc:h2:file:${STOCK_WATCH_DATA_DIR:./data}/stock-watch;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: ${STOCK_WATCH_H2_PASSWORD:}
+    driver-class-name: org.h2.Driver
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:sql/schema-h2.sql
+      continue-on-error: false
+  mail:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:465}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    protocol: smtp
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:true}
+      mail.smtp.ssl.enable: ${SMTP_SSL_ENABLE:true}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS_ENABLE:false}
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 15000
+      mail.smtp.writetimeout: 15000
+
+mybatis:
+  mapper-locations: classpath:mapper/Stock*.xml
+  type-aliases-package: com.aimeeting.room.entity
+  configuration:
+    map-underscore-to-camel-case: true
+
+logging:
+  level:
+    com.aimeeting.room: INFO
+
+ai:
+  default-model: ${STOCK_WATCH_AI_MODEL:deepseek-chat}
+  registry:
+    store-file: ${STOCK_WATCH_MODEL_REGISTRY:${STOCK_WATCH_DATA_DIR:./data}/model-registry.json}
+  models:
+    deepseek:
+      api-url: ${DEEPSEEK_API_URL:https://api.deepseek.com/v1/chat/completions}
+      api-key: ${DEEPSEEK_API_KEY:}
+      enabled: ${DEEPSEEK_ENABLED:false}
+  search:
+    provider-order: ${SEARCH_PROVIDER_ORDER:tavily,deepseek-web,zhipu,serper}
+    serper-api-key: ${SERPER_API_KEY:}
+    tavily:
+      api-key: ${TAVILY_API_KEY:}
+    zhipu:
+      api-key: ${ZHIPU_API_KEY:}
+    deepseek-web:
+      enabled: ${DEEPSEEK_WEB_SEARCH_ENABLED:false}
+      bridge-url: ${DEEPSEEK_WEB_BRIDGE_URL:http://127.0.0.1:8790/search}
+      script-path: scripts/deepseek-web-search.js
+
+notification:
+  email:
+    enabled: ${NOTIFICATION_EMAIL_ENABLED:false}
+    from: ${NOTIFICATION_EMAIL_FROM:}
+    to: ${NOTIFICATION_EMAIL_TO:}
+
+stock-watch:
+  monitor:
+    enabled: ${STOCK_WATCH_MONITOR_ENABLED:false}
+    notify-enabled: ${STOCK_WATCH_NOTIFY_ENABLED:false}
+    trading-hours-only: ${STOCK_WATCH_TRADING_HOURS_ONLY:true}
+    scan-interval-ms: ${STOCK_WATCH_SCAN_INTERVAL_MS:600000}
+    initial-delay-ms: ${STOCK_WATCH_INITIAL_DELAY_MS:30000}
+    symbols: ${STOCK_WATCH_SYMBOLS:}
+    rules: ${STOCK_WATCH_RULES:}
+    state-file: ${STOCK_WATCH_STATE_FILE:${STOCK_WATCH_DATA_DIR:./data}/monitor-state.json}
+  ai-rules:
+    store-file: ${STOCK_WATCH_AI_RULES_FILE:${STOCK_WATCH_DATA_DIR:./data}/ai-rules.json}
+    default-model: ${STOCK_WATCH_AI_MODEL:deepseek-chat}
+  technical-analysis:
+    enabled: ${STOCK_WATCH_TECH_ANALYSIS_ENABLED:false}
+    trading-hours-only: ${STOCK_WATCH_TECH_TRADING_HOURS_ONLY:true}
+    scan-interval-ms: ${STOCK_WATCH_TECH_SCAN_INTERVAL_MS:1800000}
+    initial-delay-ms: ${STOCK_WATCH_TECH_INITIAL_DELAY_MS:90000}
+    symbols: ${STOCK_WATCH_TECH_SYMBOLS:${STOCK_WATCH_SYMBOLS:}}
+    context-limit-chars: ${STOCK_WATCH_TECH_CONTEXT_LIMIT_CHARS:80000}
+    context-rotate-ratio: ${STOCK_WATCH_TECH_CONTEXT_ROTATE_RATIO:0.85}
+    bridge-url: ${STOCK_WATCH_TECH_BRIDGE_URL:${DEEPSEEK_WEB_BRIDGE_URL:http://127.0.0.1:8790/search}}
+    debug-port: ${DEEPSEEK_WEB_DEBUG_PORT:9334}
+    connect-timeout-seconds: 10
+    read-timeout-seconds: ${STOCK_WATCH_TECH_READ_TIMEOUT_SECONDS:320}
+  delivery:
+    enabled: ${STOCK_WATCH_DELIVERY_ENABLED:false}
+    scan-interval-ms: 300000
+    initial-delay-ms: 45000
+    batch-limit: 100

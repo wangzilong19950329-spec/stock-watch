@@ -1,41 +1,127 @@
-name: Extraction bootstrap
+name: Extract and validate standalone stock-watch
 on:
   push:
+    branches: ['feat/extract-stock-watch']
     paths:
       - '.github/workflows/extraction-bootstrap.yml'
       - 'tools/extract_stock_watch.py'
       - 'tools/extraction-files/**'
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 concurrency:
-  group: extraction-bootstrap
+  group: standalone-extraction
   cancel-in-progress: false
 jobs:
-  prepare:
+  extract:
+    if: github.ref == 'refs/heads/feat/extract-stock-watch'
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test-root-only
+          MYSQL_DATABASE: stock_watch_test
+          MYSQL_USER: stock_watch_test
+          MYSQL_PASSWORD: test-db-only
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ptest-root-only"
+          --health-interval=10s --health-timeout=5s --health-retries=10
     steps:
-      - name: Fetch pinned public source (read only)
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/extract-stock-watch
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read pinned upstream and generate isolated code
         env:
           SOURCE_SHA: eb674b736589fe8ddc716c15af3b400342286f57
         run: |
           set -euo pipefail
-          mkdir source
-          git -C source init -q
-          git -C source remote add origin https://github.com/wangzilong19950329-spec/ai-meeting-room-new.git
-          git -C source fetch --depth=1 origin "$SOURCE_SHA"
-          git -C source checkout --detach FETCH_HEAD
-          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
-          git -C source archive --format=tar.gz -o "$GITHUB_WORKSPACE/pinned-source.tar.gz" HEAD
-          git -C source ls-files > source-files.txt
-          printf 'Read-only source commit: %s\n' "$SOURCE_SHA" >> "$GITHUB_STEP_SUMMARY"
-      - name: Store pinned source for extraction work
+          mkdir _upstream
+          git -C _upstream init -q
+          git -C _upstream remote add origin https://github.com/wangzilong19950329-spec/ai-meeting-room-new.git
+          git -C _upstream fetch --depth=1 origin "$SOURCE_SHA"
+          git -C _upstream checkout --detach FETCH_HEAD
+          test "$(git -C _upstream rev-parse HEAD)" = "$SOURCE_SHA"
+          python tools/extract_stock_watch.py _upstream _generated
+          python _generated/tools/verify_extraction.py --sanitize
+          cp -a _generated/. .
+          python tools/verify_extraction.py
+      - name: H2 context and API integration tests
+        run: |
+          set -euo pipefail
+          mvn -B test
+          mkdir -p validation/h2
+          cp target/surefire-reports/*.xml validation/h2/
+      - name: MySQL schema and API integration tests
+        env:
+          SPRING_PROFILES_ACTIVE: mysql
+          STOCK_WATCH_DB_URL: jdbc:mysql://127.0.0.1:3306/stock_watch_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+          STOCK_WATCH_DB_USERNAME: stock_watch_test
+          STOCK_WATCH_DB_PASSWORD: test-db-only
+        run: |
+          set -euo pipefail
+          mvn -B test
+          mkdir -p validation/mysql
+          cp target/surefire-reports/*.xml validation/mysql/
+      - name: Package backend
+        run: mvn -B -DskipTests package
+      - name: Build existing Vue frontend with pinned lock
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Bridge syntax, shell syntax and runtime health
+        run: |
+          set -euo pipefail
+          npm run bridge:check
+          for f in scripts/*.sh; do bash -n "$f"; done
+          DEEPSEEK_WEB_BRIDGE_PORT=18990 node scripts/deepseek-web-bridge.js > /tmp/stock-watch-bridge-health.log 2>&1 &
+          bridge_pid=$!
+          trap 'kill "$bridge_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 20); do if curl -fsS http://127.0.0.1:18990/health > /tmp/bridge-health.json; then break; fi; sleep 1; done
+          python -c 'import json; p=json.load(open("/tmp/bridge-health.json")); assert p.get("ok") is True, p; print("Bridge health OK (no browser login attempted)")'
+      - name: Real process startup smoke test
+        run: |
+          set -euo pipefail
+          STOCK_WATCH_PORT=18117 STOCK_WATCH_DATA_DIR="$RUNNER_TEMP/stock-watch-smoke" java -jar target/stock-watch-1.0.0-SNAPSHOT.jar > /tmp/stock-watch-smoke.log 2>&1 &
+          app_pid=$!
+          trap 'kill "$app_pid" 2>/dev/null || true' EXIT
+          python scripts/smoke-test.py
+      - name: Commit only validated standalone source to extraction branch
+        run: |
+          set -euo pipefail
+          python tools/verify_extraction.py
+          test -z "$(git -C _upstream status --porcelain)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src frontend scripts docs pom.xml package.json .gitignore .env.example README.md SOURCE_REVISION tools/verify_extraction.py
+          if ! git diff --cached --quiet; then
+            git commit -m 'feat: extract independently runnable stock-watch from pinned upstream'
+            git push origin HEAD:feat/extract-stock-watch
+          fi
+          git archive --format=zip --output=/tmp/stock-watch-standalone.zip HEAD
+          git rev-parse HEAD > validation/commit.txt
+          printf 'Validated source commit: `%s`\n\nUpstream unchanged: `%s`\n' "$(git rev-parse HEAD)" eb674b736589fe8ddc716c15af3b400342286f57 >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep verification reports and source archive
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: pinned-extraction-source
+          name: stock-watch-extraction-result
           path: |
-            pinned-source.tar.gz
-            source-files.txt
-          retention-days: 3
-          if-no-files-found: error
+            /tmp/stock-watch-standalone.zip
+            validation/
+            target/surefire-reports/
+            /tmp/stock-watch-smoke.log
+            /tmp/stock-watch-bridge-health.log
+          retention-days: 7
+          if-no-files-found: warn
