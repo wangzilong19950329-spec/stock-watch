@@ -7,6 +7,8 @@ import java.util.Date;
 @Data
 public class StockWatchTechnicalAnalysis {
     private Long id;
+    private Long analysisTaskId;
+    private Integer responseContractVersion;
     private Long sessionId;
     private String symbol;
     private String market;
@@ -16,6 +18,10 @@ public class StockWatchTechnicalAnalysis {
     private String periodType;
     private String periodKey;
     private String sourceRecordIds;
+    private String evidenceSignalJson;
+    private String mainForceIntentJson;
+    private String mainForceIntentStatus;
+    private String mainForceIntentWarningsJson;
     private String status;
     private String stance;
     private String tone;
@@ -23,8 +29,12 @@ public class StockWatchTechnicalAnalysis {
     private String title;
     private String conclusion;
     private String evidenceJson;
+    private String missingDataJson;
+    private String dataSnapshotJson;
     private String rawResponse;
     private String promptHash;
+    private String taskRequestDigest;
+    private String taskRequestEnvelopeJson;
     private String provider;
     private String bridgeTargetId;
     private String conversationUrl;

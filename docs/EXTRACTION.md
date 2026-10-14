@@ -1,7 +1,9 @@
 # 抽离边界与来源
 
 源仓库：`wangzilong19950329-spec/ai-meeting-room-new`
-源提交：`eb674b736589fe8ddc716c15af3b400342286f57`
+最初抽离提交：`eb674b736589fe8ddc716c15af3b400342286f57`
+
+当前同步提交见 `SOURCE_REVISION` 与 `docs/SYNC.md`。本文件保留最初抽离边界，避免把历史指纹误写成当前版本。
 
 ## 文件选择
 
@@ -15,7 +17,7 @@
 - AppConfig 仅保留密码编码器，删除会议线程池和会议引擎配置。
 - ConfigController/ModelConfig.vue 仅保留模型注册及邮件测试，移除会议设置和旧模型已验证宣称。
 - NotificationService 仅保留邮件能力，移除会议通知和会议 ServerChan 方法。
-- 使用显式、失败即终止的 SQL 初始化，只加载 6 张 Stock Watch 表及 ai_user；H2 补齐 FC 卡表。
+- 使用显式、失败即终止的 SQL 初始化；当前 H2/MySQL schema 均为 1 张认证表加 21 张 Stock Watch 表。
 - 端口 8117/3017/8790/9334 和 ./data、~/.stock-watch 独立；不读取原 .aimeeting-room 的运行数据。
 - 新浏览器 Profile 不复制日常 Chrome 的 Cookie/会话，要求手工登录。
 - 默认自动任务、自动通知关闭；前端持续显示遗留模拟数据警告。
@@ -25,10 +27,10 @@
 
 `tools/extract_stock_watch.py` 是生成器：输入指定版本的只读源码和一个空目录。
 静态适配文件位于 `tools/extraction-files/`，便于审阅，不含运行数据。
-输出 `docs/extraction-manifest.json` 记录每份保留/修改文件的源 SHA-256、目标 SHA-256 和适配原因。
-`tools/verify_extraction.py` 检查内部依赖闭环、业务模块边界、SQL 表范围及文件指纹。
+输出 `docs/extraction-manifest.json` 记录最初抽离时每份保留/修改文件的源 SHA-256、目标 SHA-256 和适配原因。
+`tools/verify_extraction.py` 对当前同步版本检查内部依赖闭环、业务模块边界、SQL 表范围、关键文件与敏感材料边界，不再要求历史指纹等于当前文件。
 测试只使用虚拟行情和测试账户；这些是测试夹具，不是原用户数据。
-后续修改正式代码时，应同步维护指纹或把“初次抽离指纹”校验作为单独审计任务，不能自动覆盖用户改动。
+历史清单不可自动覆盖；后续同步由 `docs/SYNC.md` 和 Git 提交记录追溯。
 
 ## 历史和许可
 

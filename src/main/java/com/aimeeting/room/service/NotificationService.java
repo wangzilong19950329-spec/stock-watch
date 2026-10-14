@@ -1,27 +1,34 @@
 package com.aimeeting.room.service;
 
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.*;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import javax.mail.internet.MimeMessage;
 
 /**
- * 股票盯盘邮件通知服务。
+ * 会议结论通知服务。
  * Server酱和邮件通道均为可选配置，未配置时自动跳过。
  */
 @Slf4j
 @Service
 public class NotificationService {
 
+    @Value("${notification.serverchan-key:}")
+    private String serverChanKey;
 
     @Value("${notification.email.enabled:false}")
     private boolean emailEnabled;
@@ -40,12 +47,29 @@ public class NotificationService {
 
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
 
+    private final OkHttpClient http = new OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .build();
 
     public NotificationService(ObjectProvider<JavaMailSender> mailSenderProvider) {
         this.mailSenderProvider = mailSenderProvider;
     }
 
-/**
+    /**
+     * 发送会议结论通知。
+     *
+     * @param meetingTitle 会议标题
+     * @param conclusion   最终结论
+     */
+    public void sendMeetingConclusion(String meetingTitle, String conclusion) {
+        String title = "AI 会议室 · 结论已生成";
+        String content = "议题：" + safeText(meetingTitle) + "\n\n最终结论：\n" + safeText(conclusion);
+        sendServerChan(title, "**议题：** " + safeText(meetingTitle) + "\n\n**最终结论：**\n" + safeText(conclusion), meetingTitle);
+        sendEmail(title, content);
+    }
+
+    /**
      * 给后续 stock-watch / 插件式 dispatcher 复用的通用邮件入口。
      */
     public boolean sendStockWatchAlert(String alertTitle, String alertContent) {
@@ -60,6 +84,14 @@ public class NotificationService {
                                                            String alertContent,
                                                            List<String> recipients,
                                                            EmailSenderConfig senderConfig) {
+        return sendStockWatchAlertToRecipients(alertTitle, alertContent, recipients, senderConfig, null);
+    }
+
+    public EmailSendResult sendStockWatchAlertToRecipients(String alertTitle,
+                                                           String alertContent,
+                                                           List<String> recipients,
+                                                           EmailSenderConfig senderConfig,
+                                                           String logicalMessageId) {
         List<String> normalizedRecipients = recipients == null
                 ? List.of()
                 : recipients.stream()
@@ -76,22 +108,29 @@ public class NotificationService {
             return EmailSendResult.fail("SMTP 未配置或 JavaMailSender 未初始化");
         }
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(normalizedRecipients.toArray(new String[0]));
         String from = senderConfig != null && !isBlank(senderConfig.getFrom())
                 ? senderConfig.getFrom()
                 : firstNonBlank(emailFrom, mailUsername);
-        if (!isBlank(from)) {
-            message.setFrom(from);
-        }
-        message.setSubject(firstNonBlank(alertTitle, "Stock Watch 通知"));
-        message.setText(firstNonBlank(alertContent, "Stock Watch 有新的分析结论。"));
 
         try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, StandardCharsets.UTF_8.name());
+            helper.setTo(normalizedRecipients.toArray(new String[0]));
+            if (!isBlank(from)) {
+                helper.setFrom(from);
+            }
+            helper.setSubject(firstNonBlank(alertTitle, "Stock Watch 通知"));
+            helper.setText(firstNonBlank(alertContent, "Stock Watch 有新的分析结论。"), false);
+            String stableId = isBlank(logicalMessageId)
+                    ? "stock-watch-" + UUID.randomUUID()
+                    : logicalMessageId.trim();
+            message.setHeader("Message-ID", "<" + stableId.replaceAll("[^A-Za-z0-9._-]", "_")
+                    + "@stock-watch.local>");
+            message.setHeader("X-Stock-Watch-Delivery-Key", stableId);
             mailSender.send(message);
-            String messageId = "stock-watch-" + UUID.randomUUID();
-            log.info("股票盯盘邮件发送成功: subject={}, recipients={}", message.getSubject(), normalizedRecipients);
-            return EmailSendResult.ok(messageId);
+            log.info("股票盯盘邮件发送成功: subject={}, recipients={}, logicalMessageId={}",
+                    helper.getMimeMessage().getSubject(), maskRecipients(normalizedRecipients), stableId);
+            return EmailSendResult.ok(stableId);
         } catch (Exception e) {
             log.warn("股票盯盘邮件发送失败: {}", e.getMessage());
             return EmailSendResult.fail(e.getMessage());
@@ -131,12 +170,12 @@ public class NotificationService {
         if (!isBlank(from)) {
             message.setFrom(from);
         }
-        message.setSubject(firstNonBlank(subject, "Stock Watch通知"));
+        message.setSubject(firstNonBlank(subject, "AI 会议室通知"));
         message.setText(firstNonBlank(content, "有新的通知事件。"));
 
         try {
             mailSender.send(message);
-            log.info("邮件通知发送成功: subject={}, recipients={}", message.getSubject(), recipients);
+            log.info("邮件通知发送成功: subject={}, recipients={}", message.getSubject(), maskRecipients(recipients));
             return true;
         } catch (Exception e) {
             log.warn("邮件通知发送失败: {}", e.getMessage());
@@ -175,7 +214,34 @@ public class NotificationService {
         return mailSenderProvider.getIfAvailable();
     }
 
+    private void sendServerChan(String title, String desp, String meetingTitle) {
+        if (serverChanKey == null || serverChanKey.trim().isEmpty()) {
+            log.debug("Server酱 key 未配置，跳过通知");
+            return;
+        }
+        try {
+            String url = "https://sctapi.ftqq.com/" + serverChanKey.trim() + ".send";
 
+            RequestBody body = new FormBody.Builder()
+                    .add("title", title)
+                    .add("desp", desp)
+                    .build();
+            Request request = new Request.Builder()
+                    .url(url)
+                    .post(body)
+                    .build();
+
+            try (Response response = http.newCall(request).execute()) {
+                if (response.isSuccessful()) {
+                    log.info("微信通知发送成功: meeting={}", meetingTitle);
+                } else {
+                    log.warn("微信通知失败: code={}", response.code());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("微信通知异常: {}", e.getMessage());
+        }
+    }
 
     private List<String> parseRecipients(String raw) {
         if (isBlank(raw)) {
@@ -202,6 +268,30 @@ public class NotificationService {
 
     private String safeText(String value) {
         return value == null ? "" : value;
+    }
+
+    private List<String> maskRecipients(List<String> recipients) {
+        if (recipients == null || recipients.isEmpty()) {
+            return List.of();
+        }
+        return recipients.stream()
+                .map(this::maskEmail)
+                .collect(Collectors.toList());
+    }
+
+    private String maskEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return "";
+        }
+        String trimmed = email.trim();
+        int at = trimmed.indexOf('@');
+        if (at <= 0) {
+            return trimmed.length() <= 2 ? "**" : trimmed.charAt(0) + "***";
+        }
+        String local = trimmed.substring(0, at);
+        String domain = trimmed.substring(at);
+        String visible = local.length() <= 2 ? local.substring(0, 1) : local.substring(0, Math.min(3, local.length()));
+        return visible + "***" + domain;
     }
 
     private boolean isBlank(String value) {

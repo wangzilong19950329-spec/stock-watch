@@ -10,9 +10,12 @@ import okhttp3.Request;
 import okhttp3.Response;
 import org.springframework.stereotype.Service;
 
+import java.net.Proxy;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -25,26 +28,34 @@ public class StockQuoteService {
             "https://push2delay.eastmoney.com/api/qt/ulist.np/get",
             "https://push2.eastmoney.com/api/qt/ulist.np/get"
     );
+    private static final List<String> EASTMONEY_TRENDS_URLS = Arrays.asList(
+            "https://push2delay.eastmoney.com/api/qt/stock/trends2/get",
+            "https://push2his.eastmoney.com/api/qt/stock/trends2/get",
+            "https://push2.eastmoney.com/api/qt/stock/trends2/get"
+    );
     private static final String EASTMONEY_FIELDS = String.join(",",
             "f2", "f3", "f4", "f5", "f6", "f8", "f10", "f12", "f13", "f14",
-            "f15", "f16", "f17", "f18", "f62", "f124", "f152");
+            "f15", "f16", "f17", "f18", "f62", "f66", "f69", "f72", "f75", "f78", "f81",
+            "f84", "f87", "f124", "f152", "f184");
     private static final ZoneId CHINA_ZONE = ZoneId.of("Asia/Shanghai");
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("MM-dd HH:mm");
+    private static final DateTimeFormatter MINUTE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private final OkHttpClient http = new OkHttpClient.Builder()
+            .proxy(Proxy.NO_PROXY)
             .connectTimeout(8, TimeUnit.SECONDS)
             .readTimeout(12, TimeUnit.SECONDS)
             .build();
 
     public List<Map<String, Object>> fetchQuotes(String rawSymbols) {
-        List<StockRef> refs = parseStockRefs(rawSymbols);
+        List<StockSymbol> refs = parseStockRefs(rawSymbols);
         if (refs.isEmpty()) {
             return Collections.emptyList();
         }
 
         String secids = refs.stream()
-                .map(StockRef::secid)
+                .map(StockSymbol::eastmoneySecid)
                 .distinct()
                 .collect(Collectors.joining(","));
 
@@ -91,7 +102,19 @@ public class StockQuoteService {
                 }
 
                 return refs.stream()
-                        .map(ref -> byCode.getOrDefault(ref.symbol, failedQuote(ref, "eastmoney_missing")))
+                        .map(ref -> {
+                            Map<String, Object> quote = byCode.get(ref.getSymbol());
+                            if (quote == null) {
+                                return failedQuote(ref, "eastmoney_missing");
+                            }
+                            Map<String, Object> normalized = new LinkedHashMap<>(quote);
+                            normalized.put("providerSymbol", quote.get("symbol"));
+                            normalized.put("providerMarket", quote.get("market"));
+                            normalized.put("sourceEndpoint", quoteUrl);
+                            normalized.put("priceBasis", "UNADJUSTED");
+                            normalized.put("market", ref.getMarket());
+                            return normalized;
+                        })
                         .collect(Collectors.toList());
             } catch (Exception e) {
                 lastError = e;
@@ -104,6 +127,100 @@ public class StockQuoteService {
         }
         final String failureReason = reason;
         return refs.stream().map(ref -> failedQuote(ref, failureReason)).collect(Collectors.toList());
+    }
+
+    public Map<String, Object> fetchIntradayBars(String rawSymbol, String rawMarket) {
+        StockSymbol ref;
+        try {
+            ref = StockSymbol.parse(rawSymbol, rawMarket);
+        } catch (IllegalArgumentException e) {
+            return intradayEnvelope(rawSymbol, rawMarket, "INVALID_REQUEST", e.getMessage(), Collections.emptyList());
+        }
+        String lastReason = "eastmoney_error";
+        for (String trendsUrl : EASTMONEY_TRENDS_URLS) {
+            HttpUrl url = Objects.requireNonNull(HttpUrl.parse(trendsUrl)).newBuilder()
+                    .addQueryParameter("secid", ref.eastmoneySecid())
+                    .addQueryParameter("ndays", "1")
+                    .addQueryParameter("fields1", "f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13")
+                    .addQueryParameter("fields2", "f51,f52,f53,f54,f55,f56,f57,f58")
+                    .addQueryParameter("_", String.valueOf(System.currentTimeMillis()))
+                    .build();
+
+            Request request = new Request.Builder()
+                    .url(url)
+                    .header("Accept", "application/json,text/plain,*/*")
+                    .header("Connection", "close")
+                    .header("User-Agent", "Mozilla/5.0")
+                    .header("Referer", "https://quote.eastmoney.com/")
+                    .get()
+                    .build();
+
+            try (Response response = http.newCall(request).execute()) {
+                if (!response.isSuccessful() || response.body() == null) {
+                    lastReason = "eastmoney_http_" + response.code();
+                    log.warn("Eastmoney intraday bars failed: url={}, code={}", trendsUrl, response.code());
+                    continue;
+                }
+                JSONObject root = JSON.parseObject(response.body().string());
+                JSONObject data = root == null ? null : root.getJSONObject("data");
+                JSONArray rows = data == null ? null : data.getJSONArray("trends");
+                if (rows == null || rows.isEmpty()) {
+                    lastReason = "eastmoney_empty_trends";
+                    continue;
+                }
+                List<Map<String, Object>> result = new ArrayList<>();
+                for (Object raw : rows) {
+                    Map<String, Object> bar = toIntradayBar(raw);
+                    if (bar != null) {
+                        result.add(bar);
+                    }
+                }
+                return intradayEnvelope(ref, summarizeIntradayStatus(result), "", result);
+            } catch (Exception e) {
+                lastReason = "eastmoney_error:" + e.getClass().getSimpleName();
+                log.warn("Eastmoney intraday bars error: url={}, symbol={}, market={}, error={}",
+                        trendsUrl, ref.getSymbol(), ref.getMarket(), e.getMessage());
+            }
+        }
+        return intradayEnvelope(ref, "SOURCE_ERROR", lastReason, Collections.emptyList());
+    }
+
+    private Map<String, Object> intradayEnvelope(StockSymbol ref, String status, String reason, List<Map<String, Object>> bars) {
+        return intradayEnvelope(ref.getSymbol(), ref.getMarket(), status, reason, bars);
+    }
+
+    private Map<String, Object> intradayEnvelope(String symbol, String market, String status, String reason, List<Map<String, Object>> bars) {
+        List<Map<String, Object>> safeBars = bars == null ? Collections.emptyList() : bars;
+        long validBars = safeBars.stream().filter(bar -> "VALID".equals(bar.get("qualityStatus"))).count();
+        long invalidBars = safeBars.stream().filter(bar -> "INVALID".equals(bar.get("qualityStatus"))).count();
+        Map<String, Object> qualitySummary = new LinkedHashMap<>();
+        qualitySummary.put("totalBars", safeBars.size());
+        qualitySummary.put("validBars", validBars);
+        qualitySummary.put("invalidBars", invalidBars);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("requestedSymbol", symbol);
+        result.put("requestedMarket", market);
+        result.put("provider", "Eastmoney");
+        result.put("source", "Eastmoney trends2");
+        result.put("status", status);
+        result.put("reason", reason);
+        result.put("fetchedAt", Instant.now().toString());
+        result.put("asOfTime", safeBars.isEmpty() ? null : safeBars.get(safeBars.size() - 1).get("startTime"));
+        result.put("qualitySummary", qualitySummary);
+        result.put("bars", safeBars);
+        return result;
+    }
+
+    private String summarizeIntradayStatus(List<Map<String, Object>> bars) {
+        if (bars == null || bars.isEmpty()) {
+            return "EMPTY";
+        }
+        long invalidBars = bars.stream().filter(bar -> "INVALID".equals(bar.get("qualityStatus"))).count();
+        if (invalidBars == 0) {
+            return "VALID";
+        }
+        return invalidBars == bars.size() ? "INVALID" : "DEGRADED";
     }
 
     private Map<String, Object> toQuote(JSONObject item) {
@@ -128,29 +245,74 @@ public class StockQuoteService {
         quote.put("open", readDouble(item.get("f17")));
         quote.put("previousClose", readDouble(item.get("f18")));
         quote.put("mainInflow", readDouble(item.get("f62")));
+        quote.put("mainInflowRatio", readDouble(item.get("f184")));
+        quote.put("superLargeInflow", readDouble(item.get("f66")));
+        quote.put("superLargeInflowRatio", readDouble(item.get("f69")));
+        quote.put("largeInflow", readDouble(item.get("f72")));
+        quote.put("largeInflowRatio", readDouble(item.get("f75")));
+        quote.put("mediumInflow", readDouble(item.get("f78")));
+        quote.put("mediumInflowRatio", readDouble(item.get("f81")));
+        quote.put("smallInflow", readDouble(item.get("f84")));
+        quote.put("smallInflowRatio", readDouble(item.get("f87")));
         quote.put("timestamp", timestamp);
         quote.put("updateTime", formatTime(timestamp, DATE_TIME_FORMATTER));
         quote.put("lastTime", formatTime(timestamp, TIME_FORMATTER));
         return quote;
     }
 
-    private Map<String, Object> failedQuote(StockRef ref, String reason) {
+    private Map<String, Object> toIntradayBar(Object value) {
+        String[] parts = String.valueOf(value).split(",", -1);
+        if (parts.length < 8) {
+            return null;
+        }
+        Double open = readDouble(parts[1]);
+        Double close = readDouble(parts[2]);
+        Double high = readDouble(parts[3]);
+        Double low = readDouble(parts[4]);
+        Map<String, Object> bar = new LinkedHashMap<>();
+        String startTime = parts[0];
+        bar.put("startTime", startTime);
+        bar.put("endTime", endTime(startTime));
+        bar.put("open", open);
+        bar.put("high", high);
+        bar.put("low", low);
+        bar.put("close", close);
+        bar.put("volume", readDouble(parts[5]));
+        bar.put("amount", readDouble(parts[6]));
+        bar.put("qualityStatus", open == null || high == null || low == null || close == null ? "INVALID" : "VALID");
+        return bar;
+    }
+
+    private String endTime(String startTime) {
+        if (startTime == null || startTime.trim().isEmpty()) {
+            return startTime;
+        }
+        try {
+            return LocalDateTime.parse(startTime, MINUTE_TIME_FORMATTER)
+                    .plusMinutes(1)
+                    .format(MINUTE_TIME_FORMATTER);
+        } catch (DateTimeParseException ignored) {
+            return startTime;
+        }
+    }
+
+    private Map<String, Object> failedQuote(StockSymbol ref, String reason) {
         Map<String, Object> quote = new LinkedHashMap<>();
         quote.put("ok", false);
         quote.put("source", "Eastmoney quote");
-        quote.put("symbol", ref.symbol);
-        quote.put("market", ref.market);
+        quote.put("symbol", ref.getSymbol());
+        quote.put("market", ref.getMarket());
         quote.put("reason", reason);
         return quote;
     }
 
-    private List<StockRef> parseStockRefs(String rawSymbols) {
+    private List<StockSymbol> parseStockRefs(String rawSymbols) {
         if (rawSymbols == null || rawSymbols.trim().isEmpty()) {
             return Collections.emptyList();
         }
-        List<StockRef> refs = new ArrayList<>();
+        List<StockSymbol> refs = new ArrayList<>();
         for (String token : rawSymbols.split("[,;\\s]+")) {
-            StockRef ref = parseStockRef(token);
+            StockSymbol ref = StockSymbol.tryParse(token, "");
             if (ref != null) {
                 refs.add(ref);
             }
@@ -158,54 +320,8 @@ public class StockQuoteService {
         return refs;
     }
 
-    private StockRef parseStockRef(String raw) {
-        if (raw == null) {
-            return null;
-        }
-        String value = raw.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", "");
-        if (value.isEmpty()) {
-            return null;
-        }
-
-        java.util.regex.Matcher prefixed = java.util.regex.Pattern
-                .compile("^(sh|sz|bj)[._-]?(\\d{6})$")
-                .matcher(value);
-        if (prefixed.matches()) {
-            return new StockRef(prefixed.group(2), prefixed.group(1));
-        }
-
-        java.util.regex.Matcher suffixed = java.util.regex.Pattern
-                .compile("^(\\d{6})(?:[._-]?(sh|sz|bj))?$")
-                .matcher(value);
-        if (!suffixed.matches()) {
-            return null;
-        }
-        String symbol = suffixed.group(1);
-        String market = suffixed.group(2) != null ? suffixed.group(2) : inferMarket(symbol);
-        return new StockRef(symbol, market);
-    }
-
-    private String inferMarket(String symbol) {
-        if (symbol == null) {
-            return "sh";
-        }
-        if (symbol.startsWith("6") || symbol.startsWith("9")) {
-            return "sh";
-        }
-        if (symbol.startsWith("4") || symbol.startsWith("8")) {
-            return "bj";
-        }
-        return "sz";
-    }
-
     private String marketFromEastmoney(Integer value, String symbol) {
-        if (value != null && value == 1) {
-            return "sh";
-        }
-        if (symbol != null && (symbol.startsWith("4") || symbol.startsWith("8"))) {
-            return "bj";
-        }
-        return "sz";
+        return StockSymbol.marketFromEastmoney(value, symbol);
     }
 
     private Double readDouble(Object value) {
@@ -243,17 +359,4 @@ public class StockQuoteService {
         return Instant.ofEpochSecond(timestamp).atZone(CHINA_ZONE).format(formatter);
     }
 
-    private static class StockRef {
-        private final String symbol;
-        private final String market;
-
-        private StockRef(String symbol, String market) {
-            this.symbol = symbol;
-            this.market = market;
-        }
-
-        private String secid() {
-            return ("sh".equals(market) ? "1" : "0") + "." + symbol;
-        }
-    }
 }

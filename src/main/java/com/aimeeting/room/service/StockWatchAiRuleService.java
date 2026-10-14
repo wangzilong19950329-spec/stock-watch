@@ -14,7 +14,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -24,6 +27,20 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class StockWatchAiRuleService {
+
+    public static final String CAPABILITY_GENERAL_LEGACY = "GENERAL_LEGACY";
+    public static final String CAPABILITY_QUOTE_ANOMALY_V1 = "QUOTE_ANOMALY_V1";
+    public static final String CAPABILITY_L0_ADVISORY = "L0_ADVISORY";
+    public static final String CAPABILITY_RISK_PATTERN_REQUIRED = "RISK_PATTERN_REQUIRED";
+    public static final String TRIGGER_MODE_LEGACY_MODEL_RULE = "LEGACY_MODEL_RULE";
+    public static final String TRIGGER_MODE_ADVISORY = "ADVISORY";
+    public static final String TRIGGER_MODE_REQUIRED = "REQUIRED";
+    private static final List<String> ALLOWED_CAPABILITIES = Arrays.asList(
+            CAPABILITY_GENERAL_LEGACY,
+            CAPABILITY_QUOTE_ANOMALY_V1,
+            CAPABILITY_L0_ADVISORY,
+            CAPABILITY_RISK_PATTERN_REQUIRED
+    );
 
     @Value("${stock-watch.ai-rules.store-file:}")
     private String configuredStoreFile;
@@ -127,6 +144,12 @@ public class StockWatchAiRuleService {
         if (source.containsKey("minConfidence")) rule.setMinConfidence(number(source.get("minConfidence"), rule.getMinConfidence()));
         if (source.containsKey("cooldownDays")) rule.setCooldownDays(integer(source.get("cooldownDays"), rule.getCooldownDays()));
         if (source.containsKey("note")) rule.setNote(text(source.get("note"), rule.getNote()));
+        if (source.containsKey("requiredCapabilities")) {
+            rule.setRequiredCapabilities(stringList(source.get("requiredCapabilities")));
+        }
+        if (source.containsKey("riskPatternTriggerMode")) {
+            rule.setRiskPatternTriggerMode(text(source.get("riskPatternTriggerMode"), rule.getRiskPatternTriggerMode()));
+        }
         return rule;
     }
 
@@ -134,29 +157,11 @@ public class StockWatchAiRuleService {
         if (!StringUtils.hasText(rule.getSymbol())) {
             throw new IllegalArgumentException("股票编码不能为空");
         }
-        String symbol = rule.getSymbol().trim().toLowerCase(Locale.ROOT);
-        String market = StringUtils.hasText(rule.getMarket()) ? rule.getMarket().trim().toLowerCase(Locale.ROOT) : "";
-        java.util.regex.Matcher prefixed = java.util.regex.Pattern
-                .compile("^(sh|sz|bj)[._-]?(\\d{6})$")
-                .matcher(symbol);
-        java.util.regex.Matcher suffixed = java.util.regex.Pattern
-                .compile("^(\\d{6})(?:[._-]?(sh|sz|bj))?$")
-                .matcher(symbol);
-        if (prefixed.matches()) {
-            market = prefixed.group(1);
-            symbol = prefixed.group(2);
-        } else if (suffixed.matches()) {
-            symbol = suffixed.group(1);
-            if (!StringUtils.hasText(market)) {
-                market = StringUtils.hasText(suffixed.group(2)) ? suffixed.group(2) : inferMarket(symbol);
-            }
-        } else {
-            throw new IllegalArgumentException("股票编码格式不正确");
-        }
-        rule.setSymbol(symbol);
-        rule.setMarket(StringUtils.hasText(market) ? market : inferMarket(symbol));
+        StockSymbol normalized = StockSymbol.parse(rule.getSymbol(), rule.getMarket());
+        rule.setSymbol(normalized.getSymbol());
+        rule.setMarket(normalized.getMarket());
         if (!StringUtils.hasText(rule.getName())) {
-            rule.setName(symbol);
+            rule.setName(normalized.getSymbol());
         }
         if (!StringUtils.hasText(rule.getConditionText())) {
             throw new IllegalArgumentException("AI观察条件不能为空");
@@ -173,7 +178,85 @@ public class StockWatchAiRuleService {
         if (rule.getCooldownDays() == null || rule.getCooldownDays() < 0) {
             rule.setCooldownDays(1);
         }
+        if ((rule.getRequiredCapabilities() == null || rule.getRequiredCapabilities().isEmpty())
+                && isCanonicalQuoteAnomalyV1(rule.getConditionText())) {
+            rule.setRequiredCapabilities(new ArrayList<>(
+                    Collections.singletonList(CAPABILITY_QUOTE_ANOMALY_V1)));
+        }
+        normalizeCapabilities(rule);
         return rule;
+    }
+
+    private boolean isCanonicalQuoteAnomalyV1(String conditionText) {
+        if (!StringUtils.hasText(conditionText)) return false;
+        String value = conditionText.toLowerCase(Locale.ROOT).replaceAll("\\s+", "");
+        return value.contains("仅基于quote结构化行情判断")
+                && value.contains("changepercent>=5")
+                && value.contains(">=9.5%")
+                && value.contains("<=-9.5%")
+                && value.contains("volumeratio>=2")
+                && value.contains("涨跌幅绝对值>=2")
+                && value.contains("maininflow绝对值>=100000000")
+                && value.contains("turnover>=5")
+                && value.contains("涨跌幅绝对值>=3")
+                && value.contains("满足任一条件");
+    }
+
+    private void normalizeCapabilities(AiWatchRule rule) {
+        List<String> capabilities = rule.getRequiredCapabilities();
+        if (capabilities == null || capabilities.isEmpty()) {
+            rule.setRequiredCapabilities(new ArrayList<>(Collections.singletonList(CAPABILITY_GENERAL_LEGACY)));
+            rule.setRiskPatternTriggerMode(TRIGGER_MODE_LEGACY_MODEL_RULE);
+            return;
+        }
+        LinkedHashSet<String> normalized = new LinkedHashSet<>();
+        for (String capability : capabilities) {
+            String value = text(capability, "").toUpperCase(Locale.ROOT);
+            if (!ALLOWED_CAPABILITIES.contains(value)) {
+                throw new IllegalArgumentException("不支持的AI规则能力: " + capability);
+            }
+            normalized.add(value);
+        }
+        if (normalized.contains(CAPABILITY_GENERAL_LEGACY) && normalized.size() > 1) {
+            throw new IllegalArgumentException("GENERAL_LEGACY 不能与L0能力混用");
+        }
+        String mode = text(rule.getRiskPatternTriggerMode(), "").toUpperCase(Locale.ROOT);
+        if (!StringUtils.hasText(mode)) {
+            mode = normalized.contains(CAPABILITY_RISK_PATTERN_REQUIRED) ? TRIGGER_MODE_REQUIRED : TRIGGER_MODE_ADVISORY;
+        }
+        if (!Arrays.asList(TRIGGER_MODE_LEGACY_MODEL_RULE, TRIGGER_MODE_ADVISORY, TRIGGER_MODE_REQUIRED).contains(mode)) {
+            throw new IllegalArgumentException("不支持的风险模式触发方式: " + mode);
+        }
+        if (TRIGGER_MODE_REQUIRED.equals(mode) && !normalized.contains(CAPABILITY_RISK_PATTERN_REQUIRED)) {
+            throw new IllegalArgumentException("REQUIRED 模式必须声明 RISK_PATTERN_REQUIRED 能力");
+        }
+        if (normalized.contains(CAPABILITY_RISK_PATTERN_REQUIRED) && !TRIGGER_MODE_REQUIRED.equals(mode)) {
+            throw new IllegalArgumentException("RISK_PATTERN_REQUIRED 能力必须使用 REQUIRED 模式");
+        }
+        if (normalized.contains(CAPABILITY_L0_ADVISORY) && TRIGGER_MODE_LEGACY_MODEL_RULE.equals(mode)) {
+            throw new IllegalArgumentException("L0_ADVISORY 不能使用 LEGACY_MODEL_RULE 模式");
+        }
+        rule.setRequiredCapabilities(new ArrayList<>(normalized));
+        rule.setRiskPatternTriggerMode(mode);
+    }
+
+    private List<String> stringList(Object raw) {
+        if (raw == null) return new ArrayList<>();
+        List<String> values = new ArrayList<>();
+        if (raw instanceof Iterable) {
+            for (Object item : (Iterable<?>) raw) {
+                String value = text(item, "");
+                if (StringUtils.hasText(value)) values.add(value);
+            }
+            return values;
+        }
+        String value = text(raw, "");
+        if (StringUtils.hasText(value)) {
+            for (String item : value.split("[,;\\s]+")) {
+                if (StringUtils.hasText(item)) values.add(item);
+            }
+        }
+        return values;
     }
 
     private void ensureLoaded() {
@@ -219,17 +302,11 @@ public class StockWatchAiRuleService {
         if (StringUtils.hasText(configuredStoreFile)) {
             return Paths.get(expandHome(configuredStoreFile)).toAbsolutePath().normalize();
         }
-        return Paths.get(System.getProperty("user.home"), ".stock-watch", "stock-watch-ai-rules.json");
+        return Paths.get(System.getProperty("user.home"), ".aimeeting-room", "stock-watch-ai-rules.json");
     }
 
     private String expandHome(String path) {
         return path.startsWith("~/") ? System.getProperty("user.home") + path.substring(1) : path;
-    }
-
-    private String inferMarket(String symbol) {
-        if (symbol.startsWith("6") || symbol.startsWith("9")) return "sh";
-        if (symbol.startsWith("4") || symbol.startsWith("8")) return "bj";
-        return "sz";
     }
 
     private String text(Object raw, String fallback) {
@@ -285,6 +362,8 @@ public class StockWatchAiRuleService {
         private Double minConfidence = 0.75;
         private Integer cooldownDays = 1;
         private String note;
+        private List<String> requiredCapabilities;
+        private String riskPatternTriggerMode;
         private String createdAt;
         private String updatedAt;
 
@@ -302,9 +381,34 @@ public class StockWatchAiRuleService {
             copy.minConfidence = minConfidence;
             copy.cooldownDays = cooldownDays;
             copy.note = note;
+            copy.requiredCapabilities = requiredCapabilities == null
+                    ? null
+                    : new ArrayList<>(requiredCapabilities);
+            copy.riskPatternTriggerMode = riskPatternTriggerMode;
             copy.createdAt = createdAt;
             copy.updatedAt = updatedAt;
             return copy;
+        }
+
+        public boolean isGeneralLegacy() {
+            return requiredCapabilities == null
+                    || requiredCapabilities.isEmpty()
+                    || requiredCapabilities.contains(CAPABILITY_GENERAL_LEGACY);
+        }
+
+        public boolean isQuoteAnomalyV1() {
+            return requiredCapabilities != null
+                    && requiredCapabilities.contains(CAPABILITY_QUOTE_ANOMALY_V1);
+        }
+
+        public boolean requiresRiskPattern() {
+            return requiredCapabilities != null
+                    && requiredCapabilities.contains(CAPABILITY_RISK_PATTERN_REQUIRED);
+        }
+
+        public boolean usesRiskPattern() {
+            return requiresRiskPattern()
+                    || (requiredCapabilities != null && requiredCapabilities.contains(CAPABILITY_L0_ADVISORY));
         }
     }
 }

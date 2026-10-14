@@ -4,7 +4,7 @@
   "private": true,
   "engines": { "node": ">=22" },
   "scripts": {
-    "bridge": "node scripts/deepseek-web-bridge.js",
+    "bridge": "bash scripts/start-bridge.sh",
     "bridge:check": "node --check scripts/deepseek-web-client.js && node --check scripts/deepseek-web-bridge.js && node --check scripts/deepseek-web-search.js"
   }
 }

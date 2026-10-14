@@ -252,6 +252,7 @@ public class StockWatchDeliveryService {
                 config.getSymbol(), config.getMarket(), config.getActiveFrom(), Math.max(1, batchLimit));
 
         for (StockWatchTechnicalAnalysis analysis : candidates) {
+            TrustedTechnicalRendererV1.applyTrustedView(analysis);
             if (!matchesPolicy(analysis, config.getTriggerPolicyJson())) {
                 plan.skippedPolicyCount += 1;
                 continue;
@@ -441,6 +442,7 @@ public class StockWatchDeliveryService {
     }
 
     private Map<String, Object> toAnalysisPreview(StockWatchTechnicalAnalysis analysis, int pendingRecipients) {
+        TrustedTechnicalRendererV1.RenderedTechnical trustedTechnical = TrustedTechnicalRendererV1.applyTrustedView(analysis);
         Map<String, Object> item = new LinkedHashMap<>();
         item.put("id", analysis.getId());
         item.put("date", analysis.getAnalysisDate() == null ? "" : DATE_FORMATTER.format(
@@ -450,8 +452,16 @@ public class StockWatchDeliveryService {
         item.put("stance", analysis.getStance());
         item.put("tone", analysis.getTone());
         item.put("confidence", analysis.getConfidence());
-        item.put("conclusion", firstNonBlank(analysis.getConclusion(), analysis.getRawResponse()));
+        item.put("conclusion", TrustedTechnicalRendererV1.isTrustedV6(analysis)
+                ? firstNonBlank(analysis.getConclusion(), "冻结技术证据不足，无法形成可信方向结论。")
+                : firstNonBlank(analysis.getConclusion(), analysis.getRawResponse()));
+        JSONObject mainForceIntent = validMainForceIntent(analysis);
+        item.put("mainForceIntent", mainForceIntent);
+        item.put("evidenceQuality", mainForceIntent == null
+                ? "LEGACY_UNVERIFIED" : firstNonBlank(mainForceIntent.getString("evidenceQuality"), "LEGACY_UNVERIFIED"));
+        item.put("mainForceIntentStatus", analysis.getMainForceIntentStatus());
         item.put("pendingRecipients", pendingRecipients);
+        if (trustedTechnical != null) item.putAll(trustedTechnical.metadata());
         return item;
     }
 
@@ -478,28 +488,71 @@ public class StockWatchDeliveryService {
     }
 
     private void appendAnalysisBlock(StringBuilder builder, int index, StockWatchTechnicalAnalysis analysis) {
+        boolean v6Trusted = TrustedTechnicalRendererV1.isTrustedV6(analysis);
+        TrustedTechnicalRendererV1.applyTrustedView(analysis);
         appendSection(builder, "二、结论 " + index + "：" + firstNonBlank(analysis.getTitle(), "技术面分析结论"));
         appendLine(builder, "分析时间", firstNonBlank(formatAnalysisDate(analysis), "--"));
         appendLine(builder, "立场", firstNonBlank(analysis.getStance(), "--"));
         appendLine(builder, "情绪", firstNonBlank(analysis.getTone(), "--"));
         appendLine(builder, "置信度", analysis.getConfidence() == null ? "--" : String.format(Locale.ROOT, "%.2f", analysis.getConfidence()));
 
-        appendSection(builder, "三、DeepSeek 分析建议");
-        appendParagraph(builder, firstNonBlank(cleanAnalysisText(analysis.getConclusion()),
-                cleanAnalysisText(analysis.getRawResponse()), "本轮无可展示结论。"), "  ");
+        appendSection(builder, v6Trusted ? "三、服务器技术信号" : "三、DeepSeek 分析建议");
+        String conclusion = v6Trusted
+                ? firstNonBlank(cleanAnalysisText(analysis.getConclusion()), "冻结技术证据不足，无法形成可信方向结论。")
+                : firstNonBlank(cleanAnalysisText(analysis.getConclusion()),
+                        cleanAnalysisText(analysis.getRawResponse()), "本轮无可展示结论。");
+        appendParagraph(builder, conclusion, "  ");
+        int sectionIndex = 4;
+        if (appendMainForceIntentBlock(builder, analysis, sectionIndex)) {
+            sectionIndex++;
+        }
 
         List<String> evidence = parseEvidence(analysis.getEvidenceJson());
         if (!evidence.isEmpty()) {
-            appendSection(builder, "四、关键依据");
+            appendSection(builder, chineseSection(sectionIndex++) + "、关键依据");
             for (String item : evidence) {
                 appendParagraph(builder, item, "  - ");
             }
         }
 
         if (StringUtils.hasText(analysis.getConversationUrl())) {
-            appendSection(builder, "五、溯源");
+            appendSection(builder, chineseSection(sectionIndex) + "、溯源");
             appendLine(builder, "DeepSeek 原会话", analysis.getConversationUrl());
         }
+    }
+
+    private boolean appendMainForceIntentBlock(StringBuilder builder, StockWatchTechnicalAnalysis analysis, int sectionIndex) {
+        JSONObject intent = validMainForceIntent(analysis);
+        if (intent == null || intent.isEmpty()) {
+            return false;
+        }
+        appendSection(builder, chineseSection(sectionIndex) + "、" + mainForceSectionLabel(intent));
+        appendLine(builder, "意图", firstNonBlank(intent.getString("intent"), "UNKNOWN"));
+        appendLine(builder, "窗口", firstNonBlank(intent.getString("timeWindow"), "--"));
+        appendLine(builder, "置信度", intent.get("confidence") == null ? "--" : String.valueOf(intent.get("confidence")));
+        appendLine(builder, "校验状态", firstNonBlank(analysis.getMainForceIntentStatus(), "--"));
+        if (StringUtils.hasText(intent.getString("risk"))) {
+            appendParagraph(builder, intent.getString("risk"), "  风险：");
+        }
+        JSONArray watchPoints = intent.getJSONArray("watchPoints");
+        if (watchPoints != null && !watchPoints.isEmpty()) {
+            for (int i = 0; i < watchPoints.size(); i++) {
+                appendParagraph(builder, watchPoints.getString(i), "  - ");
+            }
+        }
+        return true;
+    }
+
+    private String mainForceSectionLabel(JSONObject intent) {
+        String quality = firstNonBlank(intent == null ? null : intent.getString("evidenceQuality"), "LEGACY_UNVERIFIED");
+        if ("SERVER_PROFILE_V1".equalsIgnoreCase(quality)) {
+            return "主力证据画像（服务器确定性分类，非行动信号）";
+        }
+        if ("LEGACY_PATH_MEMBERSHIP_ONLY".equalsIgnoreCase(quality)
+                || "LEGACY_UNVERIFIED".equalsIgnoreCase(quality)) {
+            return "主力意图（模型推断，非事实标签）";
+        }
+        return "主力意图（来源未验证）";
     }
 
     private void appendTitle(StringBuilder builder, String title) {
@@ -509,6 +562,18 @@ public class StockWatchDeliveryService {
 
     private void appendSection(StringBuilder builder, String title) {
         builder.append("\n").append(title).append("\n");
+    }
+
+    private String chineseSection(int index) {
+        switch (index) {
+            case 1: return "一";
+            case 2: return "二";
+            case 3: return "三";
+            case 4: return "四";
+            case 5: return "五";
+            case 6: return "六";
+            default: return String.valueOf(index);
+        }
     }
 
     private void appendLine(StringBuilder builder, String label, Object value) {
@@ -554,6 +619,28 @@ public class StockWatchDeliveryService {
             return value.substring(0, jsonStart).trim();
         }
         return value;
+    }
+
+    private JSONObject parseObject(String raw) {
+        if (!StringUtils.hasText(raw)) {
+            return null;
+        }
+        try {
+            return JSON.parseObject(raw);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private JSONObject validMainForceIntent(StockWatchTechnicalAnalysis analysis) {
+        if (analysis == null || !StringUtils.hasText(analysis.getMainForceIntentStatus())) {
+            return null;
+        }
+        String status = analysis.getMainForceIntentStatus();
+        if (!"VALID".equalsIgnoreCase(status) && !"VALID_WITH_WARNINGS".equalsIgnoreCase(status)) {
+            return null;
+        }
+        return parseObject(analysis.getMainForceIntentJson());
     }
 
     private List<String> parseEvidence(String evidenceJson) {
@@ -734,34 +821,8 @@ public class StockWatchDeliveryService {
     }
 
     private StockRef parseStockRef(String symbol, String market) {
-        if (!StringUtils.hasText(symbol)) {
-            throw new IllegalArgumentException("股票代码不能为空");
-        }
-        String cleanSymbol = symbol.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", "");
-        String cleanMarket = market == null ? "" : market.trim().toLowerCase(Locale.ROOT);
-        java.util.regex.Matcher prefixed = java.util.regex.Pattern
-                .compile("^(sh|sz|bj)[._-]?(\\d{6})$")
-                .matcher(cleanSymbol);
-        if (prefixed.matches()) {
-            return new StockRef(prefixed.group(2), prefixed.group(1));
-        }
-        java.util.regex.Matcher suffixed = java.util.regex.Pattern
-                .compile("^(\\d{6})(?:[._-]?(sh|sz|bj))?$")
-                .matcher(cleanSymbol);
-        if (!suffixed.matches()) {
-            throw new IllegalArgumentException("股票代码格式不正确");
-        }
-        String normalizedSymbol = suffixed.group(1);
-        String normalizedMarket = StringUtils.hasText(suffixed.group(2))
-                ? suffixed.group(2)
-                : (StringUtils.hasText(cleanMarket) ? cleanMarket : inferMarket(normalizedSymbol));
-        return new StockRef(normalizedSymbol, normalizedMarket);
-    }
-
-    private String inferMarket(String symbol) {
-        if (symbol.startsWith("6") || symbol.startsWith("9")) return "sh";
-        if (symbol.startsWith("4") || symbol.startsWith("8")) return "bj";
-        return "sz";
+        StockSymbol normalized = StockSymbol.parse(symbol, market);
+        return new StockRef(normalized.getSymbol(), normalized.getMarket());
     }
 
     private String hashEmail(String email) {

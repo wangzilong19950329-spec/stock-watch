@@ -18,6 +18,7 @@ public class StockWatchListService {
 
     private final StockWatchItemMapper itemMapper;
     private final StockQuoteService stockQuoteService;
+    private final StockWatchAnalysisPolicyService analysisPolicyService;
 
     public List<Map<String, Object>> listEnabled() {
         return itemMapper.selectEnabled().stream()
@@ -33,31 +34,33 @@ public class StockWatchListService {
     }
 
     public Map<String, Object> save(Map<String, Object> body) {
-        StockRef ref = normalizeStockRef(text(body, "symbol", text(body, "code", "")),
+        StockSymbol ref = StockSymbol.parse(text(body, "symbol", text(body, "code", "")),
                 text(body, "market", ""));
-        StockWatchItem existing = itemMapper.selectBySymbolMarket(ref.symbol, ref.market);
+        StockWatchItem existing = itemMapper.selectBySymbolMarket(ref.getSymbol(), ref.getMarket());
         StockWatchItem item = existing == null ? new StockWatchItem() : existing;
-        item.setSymbol(ref.symbol);
-        item.setMarket(ref.market);
+        item.setSymbol(ref.getSymbol());
+        item.setMarket(ref.getMarket());
         item.setStockName(resolveName(ref, text(body, "stockName", text(body, "name", ""))));
         item.setImageUrl(normalizeImageUrl(text(body, "imageUrl", text(body, "image", ""))));
         item.setEnabled(bool(body.get("enabled"), true));
         item.setSource(text(body, "source", existing == null ? "manual" : firstNonBlank(existing.getSource(), "manual")));
+        item.setGroupKey(normalizeGroupKey(text(body, "groupKey", text(body, "group", "")), existing));
+        analysisPolicyService.applyDefaults(item);
         if (existing == null) {
             itemMapper.insert(item);
         } else {
             itemMapper.update(item);
         }
-        return toPayload(itemMapper.selectBySymbolMarket(ref.symbol, ref.market));
+        return toPayload(itemMapper.selectBySymbolMarket(ref.getSymbol(), ref.getMarket()));
     }
 
-    private String resolveName(StockRef ref, String requestedName) {
+    private String resolveName(StockSymbol ref, String requestedName) {
         String name = firstNonBlank(requestedName, "");
-        if (StringUtils.hasText(name) && !name.equalsIgnoreCase(ref.symbol + "." + ref.market)) {
+        if (StringUtils.hasText(name) && !name.equalsIgnoreCase(ref.label())) {
             return name;
         }
         try {
-            List<Map<String, Object>> quotes = stockQuoteService.fetchQuotes(ref.symbol + "." + ref.market);
+            List<Map<String, Object>> quotes = stockQuoteService.fetchQuotes(ref.label());
             if (!quotes.isEmpty()) {
                 String quoteName = text(quotes.get(0), "name", "");
                 if (StringUtils.hasText(quoteName)) {
@@ -67,7 +70,7 @@ public class StockWatchListService {
         } catch (Exception ignored) {
             // Name enrichment is best-effort; the symbol is still enough for scheduling.
         }
-        return ref.symbol + "." + ref.market.toUpperCase(Locale.ROOT);
+        return ref.getSymbol() + "." + ref.getMarket().toUpperCase(Locale.ROOT);
     }
 
     private Map<String, Object> toPayload(StockWatchItem item) {
@@ -84,35 +87,58 @@ public class StockWatchListService {
         payload.put("imageUrl", item.getImageUrl());
         payload.put("enabled", Boolean.TRUE.equals(item.getEnabled()));
         payload.put("source", firstNonBlank(item.getSource(), "manual"));
+        payload.put("groupKey", normalizeGroupKey(item.getGroupKey(), null));
+        payload.put("groupName", groupName(item.getGroupKey()));
+        analysisPolicyService.decorate(item, payload);
         return payload;
     }
 
-    private StockRef normalizeStockRef(String rawSymbol, String rawMarket) {
-        String value = firstNonBlank(rawSymbol, "").trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", "");
-        String market = firstNonBlank(rawMarket, "").trim().toLowerCase(Locale.ROOT);
-        java.util.regex.Matcher prefixed = java.util.regex.Pattern
-                .compile("^(sh|sz|bj)[._-]?(\\d{6})$")
-                .matcher(value);
-        if (prefixed.matches()) {
-            return new StockRef(prefixed.group(2), prefixed.group(1));
+    private String normalizeGroupKey(String rawGroupKey, StockWatchItem existing) {
+        String fallback = existing == null ? "watch" : firstNonBlank(existing.getGroupKey(), "watch");
+        String value = firstNonBlank(rawGroupKey, fallback).toLowerCase(Locale.ROOT);
+        switch (value) {
+            case "holding":
+            case "position":
+            case "portfolio":
+            case "hold":
+            case "持仓":
+            case "持仓股":
+                return "holding";
+            case "candidate":
+            case "candidate_stock":
+            case "pool":
+            case "备选":
+            case "备选股":
+                return "candidate";
+            case "archived":
+            case "archive":
+            case "paused":
+            case "归档":
+            case "暂停":
+                return "archived";
+            case "watch":
+            case "observe":
+            case "observation":
+            case "观察":
+            case "观察股":
+                return "watch";
+            default:
+                return "watch";
         }
-        java.util.regex.Matcher suffixed = java.util.regex.Pattern
-                .compile("^(\\d{6})(?:[._-]?(sh|sz|bj))?$")
-                .matcher(value);
-        if (!suffixed.matches()) {
-            throw new IllegalArgumentException("股票编码格式不正确");
-        }
-        String symbol = suffixed.group(1);
-        String effectiveMarket = StringUtils.hasText(market)
-                ? market
-                : (StringUtils.hasText(suffixed.group(2)) ? suffixed.group(2) : inferMarket(symbol));
-        return new StockRef(symbol, effectiveMarket);
     }
 
-    private String inferMarket(String symbol) {
-        if (symbol.startsWith("6") || symbol.startsWith("9")) return "sh";
-        if (symbol.startsWith("4") || symbol.startsWith("8")) return "bj";
-        return "sz";
+    private String groupName(String groupKey) {
+        switch (normalizeGroupKey(groupKey, null)) {
+            case "holding":
+                return "持仓股";
+            case "candidate":
+                return "备选股";
+            case "archived":
+                return "归档";
+            case "watch":
+            default:
+                return "观察股";
+        }
     }
 
     private String normalizeImageUrl(String imageUrl) {
@@ -154,13 +180,4 @@ public class StockWatchListService {
         return "";
     }
 
-    private static class StockRef {
-        private final String symbol;
-        private final String market;
-
-        private StockRef(String symbol, String market) {
-            this.symbol = symbol;
-            this.market = market;
-        }
-    }
 }

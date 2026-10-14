@@ -67,6 +67,11 @@ notification:
     to: ${NOTIFICATION_EMAIL_TO:}
 
 stock-watch:
+  prediction:
+    evaluation-enabled: ${STOCK_WATCH_PREDICTION_EVALUATION_ENABLED:false}
+    evaluation-batch-limit: ${STOCK_WATCH_PREDICTION_EVALUATION_BATCH_LIMIT:200}
+  deepseek-web:
+    api-key: ${DEEPSEEK_OPENAI_FACADE_API_KEY:}
   monitor:
     enabled: ${STOCK_WATCH_MONITOR_ENABLED:false}
     notify-enabled: ${STOCK_WATCH_NOTIFY_ENABLED:false}
@@ -76,23 +81,45 @@ stock-watch:
     symbols: ${STOCK_WATCH_SYMBOLS:}
     rules: ${STOCK_WATCH_RULES:}
     state-file: ${STOCK_WATCH_STATE_FILE:${STOCK_WATCH_DATA_DIR:./data}/monitor-state.json}
+    ai-alert-cooldown-minutes: ${STOCK_WATCH_AI_ALERT_COOLDOWN_MINUTES:30}
+    ai-context-technical-lookback-days: ${STOCK_WATCH_AI_CONTEXT_TECHNICAL_LOOKBACK_DAYS:14}
+    ai-context-technical-limit: ${STOCK_WATCH_AI_CONTEXT_TECHNICAL_LIMIT:48}
+    ai-context-technical-max-chars: ${STOCK_WATCH_AI_CONTEXT_TECHNICAL_MAX_CHARS:16000}
   ai-rules:
     store-file: ${STOCK_WATCH_AI_RULES_FILE:${STOCK_WATCH_DATA_DIR:./data}/ai-rules.json}
     default-model: ${STOCK_WATCH_AI_MODEL:deepseek-chat}
+    bridge-url: ${STOCK_WATCH_AI_RULES_BRIDGE_URL:${STOCK_WATCH_TECH_BRIDGE_URL:http://127.0.0.1:8790/search}}
+    bridge-first: ${STOCK_WATCH_AI_RULES_BRIDGE_FIRST:false}
+    bridge-connect-timeout-seconds: ${STOCK_WATCH_AI_RULES_BRIDGE_CONNECT_TIMEOUT_SECONDS:10}
+    bridge-read-timeout-seconds: ${STOCK_WATCH_AI_RULES_BRIDGE_READ_TIMEOUT_SECONDS:210}
   technical-analysis:
     enabled: ${STOCK_WATCH_TECH_ANALYSIS_ENABLED:false}
     trading-hours-only: ${STOCK_WATCH_TECH_TRADING_HOURS_ONLY:true}
     scan-interval-ms: ${STOCK_WATCH_TECH_SCAN_INTERVAL_MS:1800000}
     initial-delay-ms: ${STOCK_WATCH_TECH_INITIAL_DELAY_MS:90000}
+    m30-enabled: ${STOCK_WATCH_M30_ENABLED:false}
+    m30-symbols: ${STOCK_WATCH_M30_SYMBOLS:}
     symbols: ${STOCK_WATCH_TECH_SYMBOLS:${STOCK_WATCH_SYMBOLS:}}
-    context-limit-chars: ${STOCK_WATCH_TECH_CONTEXT_LIMIT_CHARS:80000}
-    context-rotate-ratio: ${STOCK_WATCH_TECH_CONTEXT_ROTATE_RATIO:0.85}
+    context-limit-chars: ${STOCK_WATCH_TECH_CONTEXT_LIMIT_CHARS:500000}
+    context-rotate-ratio: ${STOCK_WATCH_TECH_CONTEXT_ROTATE_RATIO:1.0}
     bridge-url: ${STOCK_WATCH_TECH_BRIDGE_URL:${DEEPSEEK_WEB_BRIDGE_URL:http://127.0.0.1:8790/search}}
-    debug-port: ${DEEPSEEK_WEB_DEBUG_PORT:9334}
-    connect-timeout-seconds: 10
+    debug-port: ${DEEPSEEK_WEB_DEBUG_PORT:9344}
+    connect-timeout-seconds: ${STOCK_WATCH_TECH_CONNECT_TIMEOUT_SECONDS:10}
     read-timeout-seconds: ${STOCK_WATCH_TECH_READ_TIMEOUT_SECONDS:320}
+    task-stale-after-seconds: ${STOCK_WATCH_TECH_TASK_STALE_AFTER_SECONDS:420}
+    reconcile-interval-ms: ${STOCK_WATCH_TECH_RECONCILE_INTERVAL_MS:60000}
+    reconcile-initial-delay-ms: ${STOCK_WATCH_TECH_RECONCILE_INITIAL_DELAY_MS:120000}
+    reconcile-batch-size: ${STOCK_WATCH_TECH_RECONCILE_BATCH_SIZE:20}
+    v6-mode: ${STOCK_WATCH_V6_MODE:runtime}
   delivery:
     enabled: ${STOCK_WATCH_DELIVERY_ENABLED:false}
     scan-interval-ms: 300000
     initial-delay-ms: 45000
     batch-limit: 100
+  price-failure-research:
+    enabled: ${STOCK_WATCH_PRICE_FAILURE_RESEARCH_ENABLED:false}
+    scan-interval-ms: ${STOCK_WATCH_PRICE_FAILURE_RESEARCH_SCAN_INTERVAL_MS:60000}
+    initial-delay-ms: ${STOCK_WATCH_PRICE_FAILURE_RESEARCH_INITIAL_DELAY_MS:120000}
+    batch-limit: ${STOCK_WATCH_PRICE_FAILURE_RESEARCH_BATCH_LIMIT:500}
+    reconcile-limit: ${STOCK_WATCH_PRICE_FAILURE_RESEARCH_RECONCILE_LIMIT:200}
+    outcome-observation-limit: ${STOCK_WATCH_PRICE_FAILURE_RESEARCH_OUTCOME_OBSERVATION_LIMIT:1000}

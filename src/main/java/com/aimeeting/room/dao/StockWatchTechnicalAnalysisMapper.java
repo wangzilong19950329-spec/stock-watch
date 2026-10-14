@@ -13,6 +13,8 @@ public interface StockWatchTechnicalAnalysisMapper {
 
     StockWatchTechnicalAnalysis selectById(@Param("id") Long id);
 
+    StockWatchTechnicalAnalysis selectByAnalysisTaskId(@Param("analysisTaskId") Long analysisTaskId);
+
     StockWatchTechnicalAnalysis selectLatestBySymbolDateSlot(@Param("symbol") String symbol,
                                                              @Param("market") String market,
                                                              @Param("analysisDate") Date analysisDate,
@@ -36,12 +38,38 @@ public interface StockWatchTechnicalAnalysisMapper {
                                                            @Param("periodType") String periodType,
                                                            @Param("limit") int limit);
 
+    StockWatchTechnicalAnalysis selectLatestSuccessfulBySymbolSince(@Param("symbol") String symbol,
+                                                                    @Param("market") String market,
+                                                                    @Param("periodType") String periodType,
+                                                                    @Param("since") Date since);
+
+    StockWatchTechnicalAnalysis selectLatestSuccessfulBySession(@Param("sessionId") Long sessionId,
+                                                                @Param("symbol") String symbol,
+                                                                @Param("market") String market,
+                                                                @Param("periodType") String periodType,
+                                                                @Param("maxAnalysisDate") Date maxAnalysisDate,
+                                                                @Param("maxRunSlot") String maxRunSlot);
+
     List<StockWatchTechnicalAnalysis> selectSuccessfulByDateRange(@Param("symbol") String symbol,
                                                                   @Param("market") String market,
                                                                   @Param("startDate") Date startDate,
                                                                   @Param("endDate") Date endDate,
                                                                   @Param("periodType") String periodType,
                                                                   @Param("limit") int limit);
+
+    List<StockWatchTechnicalAnalysis> selectLatestSuccessfulDailyByDateRange(@Param("symbol") String symbol,
+                                                                             @Param("market") String market,
+                                                                             @Param("startDate") Date startDate,
+                                                                             @Param("endDate") Date endDate,
+                                                                             @Param("periodType") String periodType,
+                                                                             @Param("limit") int limit);
+
+    List<StockWatchTechnicalAnalysis> selectRecentSuccessfulSlotsByDateRange(@Param("symbol") String symbol,
+                                                                             @Param("market") String market,
+                                                                             @Param("startDate") Date startDate,
+                                                                             @Param("endDate") Date endDate,
+                                                                             @Param("periodType") String periodType,
+                                                                             @Param("limit") int limit);
 
     List<StockWatchTechnicalAnalysis> selectSuccessfulSince(@Param("symbol") String symbol,
                                                             @Param("market") String market,

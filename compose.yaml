@@ -1,0 +1,36 @@
+name: stock-watch-standalone-v2
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: stock-watch-standalone:2f81660
+    container_name: stock-watch-standalone-v2
+    restart: unless-stopped
+    environment:
+      STOCK_WATCH_BIND_ADDRESS: 0.0.0.0
+      STOCK_WATCH_PORT: 8117
+      STOCK_WATCH_DATA_DIR: /app/data
+      AI_SCHEDULING_ENABLED: "false"
+      STOCK_WATCH_MONITOR_ENABLED: "false"
+      STOCK_WATCH_NOTIFY_ENABLED: "false"
+      STOCK_WATCH_TECH_ANALYSIS_ENABLED: "false"
+      STOCK_WATCH_PREDICTION_EVALUATION_ENABLED: "false"
+      STOCK_WATCH_DELIVERY_ENABLED: "false"
+      STOCK_WATCH_PRICE_FAILURE_RESEARCH_ENABLED: "false"
+      STOCK_WATCH_M30_ENABLED: "false"
+      STOCK_WATCH_TECH_BRIDGE_URL: ${STOCK_WATCH_TECH_BRIDGE_URL:-http://host.docker.internal:8791/search}
+      STOCK_WATCH_AI_RULES_BRIDGE_URL: ${STOCK_WATCH_AI_RULES_BRIDGE_URL:-http://host.docker.internal:8791/search}
+      DEEPSEEK_OPENAI_FACADE_API_KEY: ${DEEPSEEK_OPENAI_FACADE_API_KEY:-}
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    ports:
+      - 127.0.0.1:3017:8117
+      - 127.0.0.1:8117:8117
+    volumes:
+      - stock-watch-standalone-v2-data:/app/data
+
+volumes:
+  stock-watch-standalone-v2-data:
+    name: stock-watch-standalone-v2-data

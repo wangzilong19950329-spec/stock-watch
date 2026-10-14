@@ -16,13 +16,23 @@ CREATE TABLE IF NOT EXISTS `stock_watch_item` (
     `image_url`  TEXT                                COMMENT '图片 URL，base64 大图仅保留在前端本地',
     `enabled`    TINYINT     NOT NULL DEFAULT 1      COMMENT '是否纳入后端定时分析',
     `source`     VARCHAR(32) NOT NULL DEFAULT 'manual' COMMENT '来源',
+    `group_key`  VARCHAR(32) NOT NULL DEFAULT 'watch' COMMENT '主分组 holding/watch/candidate/archived',
+    `analysis_mode` VARCHAR(32) NOT NULL DEFAULT 'INTERVAL' COMMENT 'INTERVAL/DAILY_CLOSE/ON_ANOMALY/PAUSED',
+    `analysis_interval_minutes` INT DEFAULT 30 COMMENT 'INTERVAL模式分钟数，10-1440',
+    `anomaly_trigger_mode` VARCHAR(32) NOT NULL DEFAULT 'IMMEDIATE_ANALYSIS' COMMENT 'IMMEDIATE_ANALYSIS/DEFER_TO_NEXT_SCHEDULE/ALERT_ONLY',
+    `weekly_review_enabled` TINYINT NOT NULL DEFAULT 1 COMMENT '是否额外生成周复盘',
+    `monthly_review_enabled` TINYINT NOT NULL DEFAULT 1 COMMENT '是否额外生成月复盘',
+    `analysis_policy_version` BIGINT NOT NULL DEFAULT 0 COMMENT '策略乐观锁版本',
+    `analysis_policy_modified_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '策略生效边界',
     `gmt_create` DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `gmt_modify` DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_sw_item_symbol` (`symbol`, `market`),
-    KEY `idx_sw_item_enabled` (`enabled`, `symbol`, `market`)
+    KEY `idx_sw_item_enabled` (`enabled`, `symbol`, `market`),
+    KEY `idx_sw_item_group` (`group_key`, `enabled`, `symbol`, `market`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='股票盯盘监控列表';
 
+-- 股票盯盘：DeepSeek 网页技术面分析会话
 CREATE TABLE IF NOT EXISTS `stock_watch_technical_session` (
     `id`                  BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
     `symbol`              VARCHAR(16)  NOT NULL                COMMENT '股票代码',
@@ -35,7 +45,7 @@ CREATE TABLE IF NOT EXISTS `stock_watch_technical_session` (
     `status`              VARCHAR(32)  NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE/CONTEXT_ROTATED/MANUAL_ROTATED',
     `generation`          INT          NOT NULL DEFAULT 1      COMMENT '会话代数',
     `context_chars`       INT          NOT NULL DEFAULT 0      COMMENT '近似累计上下文字符数',
-    `context_limit_chars` INT          NOT NULL DEFAULT 80000  COMMENT '近似上下文阈值',
+    `context_limit_chars` INT          NOT NULL DEFAULT 500000 COMMENT '近似上下文阈值',
     `last_run_at`         DATETIME                              COMMENT '最近分析时间',
     `last_run_status`     VARCHAR(64)                           COMMENT '最近分析状态',
     `last_error`          TEXT                                  COMMENT '最近错误',
@@ -46,8 +56,10 @@ CREATE TABLE IF NOT EXISTS `stock_watch_technical_session` (
     KEY `idx_sw_tech_session_key` (`session_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='股票盯盘DeepSeek网页会话';
 
+-- 股票盯盘：DeepSeek 网页技术面分析结论
 CREATE TABLE IF NOT EXISTS `stock_watch_technical_analysis` (
     `id`                  BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `analysis_task_id`    BIGINT                                COMMENT '模型提交任务ID',
     `session_id`          BIGINT                                COMMENT '会话ID',
     `symbol`              VARCHAR(16)  NOT NULL                COMMENT '股票代码',
     `market`              VARCHAR(8)   NOT NULL                COMMENT '市场 sh/sz/bj',
@@ -57,6 +69,10 @@ CREATE TABLE IF NOT EXISTS `stock_watch_technical_analysis` (
     `period_type`         VARCHAR(16)  NOT NULL DEFAULT 'DAY'  COMMENT '周期 DAY/WEEK/MONTH',
     `period_key`          VARCHAR(32)                           COMMENT '周期主键 YYYY-MM-DD/YYYY-Www/YYYY-MM',
     `source_record_ids`   TEXT                                  COMMENT '汇总引用的日内记录ID数组',
+    `evidence_signal_json` MEDIUMTEXT                           COMMENT '程序派生的资金/价量/位置证据信号',
+    `main_force_intent_json` TEXT                                COMMENT 'DeepSeek 主力意图推断JSON',
+    `main_force_intent_status` VARCHAR(32)                       COMMENT '主力意图校验状态',
+    `main_force_intent_warnings_json` TEXT                       COMMENT '主力意图校验告警JSON',
     `status`              VARCHAR(32)  NOT NULL                COMMENT 'SUCCESS/ERROR',
     `stance`              VARCHAR(64)                          COMMENT '技术面立场',
     `tone`                VARCHAR(32)                          COMMENT 'UI色调 green/blue/amber/red',
@@ -64,6 +80,8 @@ CREATE TABLE IF NOT EXISTS `stock_watch_technical_analysis` (
     `title`               VARCHAR(256)                         COMMENT '结论标题',
     `conclusion`          TEXT                                  COMMENT '分析结论',
     `evidence_json`       TEXT                                  COMMENT '证据数组JSON',
+    `missing_data_json`   TEXT                                  COMMENT '确定性数据缺口JSON',
+    `data_snapshot_json`  MEDIUMTEXT                            COMMENT '本轮输入数据快照',
     `raw_response`        MEDIUMTEXT                            COMMENT 'DeepSeek 原始响应',
     `prompt_hash`         VARCHAR(128)                         COMMENT 'prompt哈希',
     `provider`            VARCHAR(64)                          COMMENT 'provider',
@@ -73,12 +91,220 @@ CREATE TABLE IF NOT EXISTS `stock_watch_technical_analysis` (
     `error_message`       TEXT                                  COMMENT '错误信息',
     `gmt_create`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_sw_tech_analysis_task` (`analysis_task_id`),
     KEY `idx_sw_tech_analysis_symbol_date` (`symbol`, `market`, `period_type`, `analysis_date`),
     KEY `idx_sw_tech_analysis_session` (`session_id`),
     KEY `idx_sw_tech_analysis_slot` (`symbol`, `market`, `period_type`, `period_key`, `analysis_date`, `run_slot`),
     KEY `idx_sw_tech_analysis_period` (`symbol`, `market`, `period_type`, `period_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='股票盯盘DeepSeek网页技术面分析';
 
+-- 股票盯盘：结构化预测及到期验真
+CREATE TABLE IF NOT EXISTS `stock_watch_prediction` (
+    `id`                      BIGINT       NOT NULL AUTO_INCREMENT,
+    `analysis_id`             BIGINT       NOT NULL,
+    `symbol`                  VARCHAR(16)  NOT NULL,
+    `market`                  VARCHAR(8)   NOT NULL,
+    `stock_name`              VARCHAR(128),
+    `horizon_code`            VARCHAR(16)  NOT NULL,
+    `horizon_trading_days`    INT          NOT NULL,
+    `forecast_date`           DATE         NOT NULL,
+    `source_price`            DECIMAL(18,4) NOT NULL,
+    `direction`               VARCHAR(16)  NOT NULL,
+    `direction_policy_version` VARCHAR(32) NOT NULL DEFAULT 'LEGACY_1PCT',
+    `probability`             DECIMAL(6,5),
+    `target_low`              DECIMAL(18,4),
+    `target_high`             DECIMAL(18,4),
+    `expected_return_low`     DECIMAL(12,6),
+    `expected_return_high`    DECIMAL(12,6),
+    `invalidation_price`      DECIMAL(18,4),
+    `rationale`               TEXT,
+    `input_snapshot_json`     MEDIUMTEXT,
+    `status`                  VARCHAR(24) NOT NULL DEFAULT 'PENDING',
+    `evaluated_trade_date`    DATE,
+    `actual_close`            DECIMAL(18,4),
+    `actual_high`             DECIMAL(18,4),
+    `actual_low`              DECIMAL(18,4),
+    `actual_return_pct`       DECIMAL(12,6),
+    `direction_hit`           TINYINT,
+    `range_close_hit`         TINYINT,
+    `range_touch_hit`         TINYINT,
+    `invalidated`             TINYINT,
+    `absolute_error_pct`      DECIMAL(12,6),
+    `brier_score`             DECIMAL(12,8),
+    `evaluation_note`         TEXT,
+    `evaluated_at`            DATETIME,
+    `gmt_create`              DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `gmt_modify`              DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_sw_prediction_analysis_horizon` (`analysis_id`, `horizon_code`),
+    KEY `idx_sw_prediction_symbol_date` (`symbol`, `market`, `forecast_date`),
+    KEY `idx_sw_prediction_status` (`status`, `forecast_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='股票技术预测与到期验真';
+
+CREATE TABLE IF NOT EXISTS `stock_watch_fact_head` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `symbol` VARCHAR(16) NOT NULL,
+    `market` VARCHAR(8) NOT NULL,
+    `arrival_version` BIGINT NOT NULL DEFAULT 0,
+    `latest_observation_id` BIGINT,
+    `last_source_time_epoch_ms` BIGINT,
+    `last_source_date` VARCHAR(16),
+    `last_source_quality` VARCHAR(32),
+    `last_fact_hash` VARCHAR(64),
+    `row_version` BIGINT NOT NULL DEFAULT 0,
+    `gmt_create` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `gmt_modify` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_sw_fact_head_symbol` (`symbol`, `market`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='股票canonical fact游标';
+
+CREATE TABLE IF NOT EXISTS `stock_watch_fact_observation` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `symbol` VARCHAR(16) NOT NULL,
+    `market` VARCHAR(8) NOT NULL,
+    `stock_name` VARCHAR(128),
+    `observation_key` VARCHAR(64) NOT NULL,
+    `arrival_version` BIGINT NOT NULL,
+    `source_time_epoch_ms` BIGINT NOT NULL,
+    `source_date` VARCHAR(16) NOT NULL,
+    `source_time_quality` VARCHAR(32) NOT NULL,
+    `fact_hash` VARCHAR(64) NOT NULL,
+    `fact_snapshot_json` MEDIUMTEXT NOT NULL,
+    `data_quality_json` TEXT,
+    `sampled_at` DATETIME NOT NULL,
+    `gmt_create` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_sw_fact_observation_key` (`observation_key`),
+    UNIQUE KEY `uk_sw_fact_observation_version` (`symbol`, `market`, `arrival_version`),
+    KEY `idx_sw_fact_observation_source` (`symbol`, `market`, `source_time_epoch_ms`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='股票canonical fact观察';
+
+CREATE TABLE IF NOT EXISTS `stock_watch_intent_test` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `symbol` VARCHAR(16) NOT NULL,
+    `market` VARCHAR(8) NOT NULL,
+    `origin_observation_id` BIGINT NOT NULL,
+    `activation_after_observation_id` BIGINT NOT NULL,
+    `test_key` VARCHAR(160) NOT NULL,
+    `claim_ref` VARCHAR(64) NOT NULL,
+    `metric_path` VARCHAR(128) NOT NULL,
+    `comparison_operator` VARCHAR(32) NOT NULL,
+    `target_value_json` TEXT NOT NULL,
+    `max_observation_age` INT NOT NULL,
+    `required_observed_count` INT NOT NULL,
+    `age_count` INT NOT NULL DEFAULT 0,
+    `observed_count` INT NOT NULL DEFAULT 0,
+    `test_verdict` VARCHAR(32) NOT NULL DEFAULT 'UNRESOLVED',
+    `row_version` BIGINT NOT NULL DEFAULT 0,
+    `last_evaluated_observation_id` BIGINT,
+    `last_evaluated_source_date` VARCHAR(16),
+    `resolved_observation_id` BIGINT,
+    `gmt_create` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `gmt_modify` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_sw_intent_test_origin_key` (`origin_observation_id`, `test_key`),
+    KEY `idx_sw_intent_test_active` (`symbol`, `market`, `resolved_observation_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='股票主力意图连续验证测试';
+
+CREATE TABLE IF NOT EXISTS `stock_watch_intent_test_result` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `observation_id` BIGINT NOT NULL,
+    `observation_version` BIGINT NOT NULL,
+    `test_id` BIGINT NOT NULL,
+    `actual_value_json` TEXT,
+    `match_status` VARCHAR(32) NOT NULL,
+    `verdict_after` VARCHAR(32) NOT NULL,
+    `age_after` INT NOT NULL,
+    `observed_after` INT NOT NULL,
+    `evaluated_at` DATETIME NOT NULL,
+    `gmt_create` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_sw_intent_test_result` (`observation_id`, `test_id`),
+    KEY `idx_sw_intent_test_result_test` (`test_id`, `observation_version`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='股票主力意图连续验证结果';
+
+CREATE TABLE IF NOT EXISTS `stock_watch_analysis_task` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `submission_key` VARCHAR(255) NOT NULL,
+    `request_digest` VARCHAR(64) NOT NULL,
+    `purpose` VARCHAR(64) NOT NULL,
+    `symbol` VARCHAR(16) NOT NULL,
+    `market` VARCHAR(8) NOT NULL,
+    `period_type` VARCHAR(16),
+    `observation_key` VARCHAR(128),
+    `generation` INT NOT NULL DEFAULT 1,
+    `status` VARCHAR(32) NOT NULL,
+    `provider` VARCHAR(64),
+    `request_envelope_json` MEDIUMTEXT NOT NULL,
+    `response_hash` VARCHAR(64),
+    `response_envelope_hash` VARCHAR(64),
+    `response_envelope_json` MEDIUMTEXT,
+    `raw_response` MEDIUMTEXT,
+    `content_status` VARCHAR(32),
+    `completion_reason` VARCHAR(128),
+    `provider_status` VARCHAR(64),
+    `submitted_at` DATETIME,
+    `completed_at` DATETIME,
+    `error_message` TEXT,
+    `row_version` BIGINT NOT NULL DEFAULT 0,
+    `gmt_create` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `gmt_modify` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_sw_analysis_task_submission` (`submission_key`),
+    KEY `idx_sw_analysis_task_observation` (`symbol`, `market`, `observation_key`),
+    KEY `idx_sw_analysis_task_status` (`status`, `gmt_create`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='股票模型单次提交与结果回执';
+
+CREATE TABLE IF NOT EXISTS `stock_watch_analysis_observation_identity` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `identity_key` VARCHAR(64) NOT NULL,
+    `analysis_scope` VARCHAR(40) NOT NULL,
+    `symbol` VARCHAR(16) NOT NULL,
+    `market` VARCHAR(8) NOT NULL,
+    `period_type` VARCHAR(16) NOT NULL,
+    `observation_key` VARCHAR(160) NOT NULL,
+    `canonical_task_id` BIGINT,
+    `migration_state` VARCHAR(40) NOT NULL DEFAULT 'PENDING',
+    `row_version` BIGINT NOT NULL DEFAULT 0,
+    `gmt_create` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `gmt_modify` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_sw_analysis_identity_key` (`identity_key`),
+    UNIQUE KEY `uk_sw_analysis_identity_observation` (`analysis_scope`,`market`,`symbol`,`period_type`,`observation_key`),
+    UNIQUE KEY `uk_sw_analysis_identity_task` (`canonical_task_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='股票分析 observation 的 canonical task 所有权';
+
+CREATE TABLE IF NOT EXISTS `stock_watch_analysis_identity_candidate` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `identity_id` BIGINT NOT NULL,
+    `task_id` BIGINT NOT NULL,
+    `disposition` VARCHAR(48) NOT NULL,
+    `reason` VARCHAR(255) NOT NULL,
+    `source_fingerprint` VARCHAR(64) NOT NULL,
+    `verified_at` DATETIME NOT NULL,
+    `gmt_create` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_sw_identity_candidate` (`identity_id`,`task_id`),
+    KEY `idx_sw_candidate_task` (`task_id`),
+    KEY `idx_sw_candidate_disposition` (`disposition`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='canonical identity 的历史候选与裁决审计';
+
+CREATE TABLE IF NOT EXISTS `stock_watch_analysis_migration_state` (
+    `migration_key` VARCHAR(64) NOT NULL,
+    `generation` INT NOT NULL,
+    `status` VARCHAR(24) NOT NULL,
+    `technical_task_cutoff_id` BIGINT NOT NULL DEFAULT 0,
+    `legacy_analysis_cutoff_id` BIGINT NOT NULL DEFAULT 0,
+    `legacy_analysis_count` BIGINT NOT NULL DEFAULT 0,
+    `plan_hash` VARCHAR(64) NOT NULL DEFAULT '',
+    `gmt_modify` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`migration_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='股票分析迁移就绪状态';
+INSERT IGNORE INTO `stock_watch_analysis_migration_state`
+    (`migration_key`, `generation`, `status`, `technical_task_cutoff_id`, `legacy_analysis_cutoff_id`, `legacy_analysis_count`, `plan_hash`)
+VALUES ('stock-watch-v6', 6, 'READY', 0, 0, 0, 'standalone-fresh-db');
+
+-- 股票盯盘：单股邮件推送配置
 CREATE TABLE IF NOT EXISTS `stock_watch_delivery_config` (
     `id`                    BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
     `symbol`                VARCHAR(16)  NOT NULL                COMMENT '股票代码',
@@ -101,6 +327,7 @@ CREATE TABLE IF NOT EXISTS `stock_watch_delivery_config` (
     KEY `idx_sw_delivery_config_enabled` (`enabled`, `frequency_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='股票盯盘单股邮件推送配置';
 
+-- 股票盯盘：分析结论邮件发送日志
 CREATE TABLE IF NOT EXISTS `stock_watch_delivery_log` (
     `id`               BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
     `config_id`        BIGINT       NOT NULL                COMMENT '配置ID',
@@ -121,6 +348,116 @@ CREATE TABLE IF NOT EXISTS `stock_watch_delivery_log` (
     KEY `idx_sw_delivery_symbol_time` (`symbol`, `market`, `gmt_create`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='股票盯盘分析结论邮件发送日志';
 
+CREATE TABLE IF NOT EXISTS `stock_watch_analysis_demand` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `demand_key` VARCHAR(128) NOT NULL,
+    `symbol` VARCHAR(16) NOT NULL,
+    `market` VARCHAR(8) NOT NULL,
+    `stock_name` VARCHAR(128),
+    `capability` VARCHAR(64) NOT NULL DEFAULT 'TECHNICAL_PLUS_ANOMALY',
+    `trigger_type` VARCHAR(32) NOT NULL DEFAULT 'ANOMALY_DEFERRED',
+    `schedule_slot_key` VARCHAR(128),
+    `run_slot` VARCHAR(64),
+    `coalesce_key` VARCHAR(192),
+    `active_coalesce_key` VARCHAR(192),
+    `source_policy_version` BIGINT,
+    `reason_codes_json` TEXT,
+    `trigger_context_json` MEDIUMTEXT,
+    `period_type` VARCHAR(16) NOT NULL DEFAULT 'DAY',
+    `target_fact_observation_id` BIGINT,
+    `target_fact_observation_key` VARCHAR(64),
+    `target_source_time_epoch_ms` BIGINT,
+    `trade_date` DATE NOT NULL,
+    `business_generation` INT NOT NULL DEFAULT 1,
+    `retry_of_demand_id` BIGINT,
+    `superseded_by_demand_id` BIGINT,
+    `status` VARCHAR(32) NOT NULL,
+    `priority` INT NOT NULL DEFAULT 400,
+    `not_before` DATETIME NOT NULL,
+    `deadline_at` DATETIME NOT NULL,
+    `provider_submit_count` INT NOT NULL DEFAULT 0,
+    `analysis_task_id` BIGINT,
+    `analysis_id` BIGINT,
+    `lease_token` VARCHAR(64),
+    `lease_until` DATETIME,
+    `error_message` TEXT,
+    `row_version` BIGINT NOT NULL DEFAULT 0,
+    `gmt_create` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `gmt_modify` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_sw_analysis_demand_key` (`demand_key`),
+    UNIQUE KEY `uk_sw_analysis_demand_active_coalesce` (`active_coalesce_key`),
+    KEY `idx_sw_analysis_demand_dispatch` (`status`,`not_before`,`priority`),
+    KEY `idx_sw_analysis_demand_task` (`analysis_task_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='按策略调度或异动触发的统一分析需求';
+
+CREATE TABLE IF NOT EXISTS `stock_watch_analysis_scheduler_ownership` (
+    `id` INT NOT NULL,
+    `mode` VARCHAR(16) NOT NULL,
+    `generation` BIGINT NOT NULL DEFAULT 0,
+    `row_version` BIGINT NOT NULL DEFAULT 0,
+    `last_error` TEXT,
+    `gmt_create` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `gmt_modify` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='股票分析调度器单一所有权';
+INSERT IGNORE INTO `stock_watch_analysis_scheduler_ownership` (`id`,`mode`,`generation`,`row_version`)
+VALUES (1,'LEGACY',0,0);
+
+CREATE TABLE IF NOT EXISTS `stock_watch_alert_delivery_obligation` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `event_key` VARCHAR(128) NOT NULL,
+    `open_episode_key` VARCHAR(128),
+    `config_id` BIGINT,
+    `rule_id` VARCHAR(64) NOT NULL,
+    `symbol` VARCHAR(16) NOT NULL,
+    `market` VARCHAR(8) NOT NULL,
+    `stock_name` VARCHAR(128),
+    `recipient_hash` VARCHAR(64) NOT NULL,
+    `recipient_address` VARCHAR(320) NOT NULL,
+    `sender_snapshot_json` TEXT,
+    `target_fact_observation_id` BIGINT,
+    `target_fact_observation_key` VARCHAR(64),
+    `target_source_time_epoch_ms` BIGINT,
+    `trade_date` DATE,
+    `signal_fingerprint` VARCHAR(512) NOT NULL,
+    `inline_analysis_id` BIGINT,
+    `analysis_demand_id` BIGINT,
+    `deadline_at` DATETIME NOT NULL,
+    `episode_suppressed_until` DATETIME,
+    `initial_subject` VARCHAR(512) NOT NULL,
+    `initial_body` MEDIUMTEXT NOT NULL,
+    `initial_message_id` VARCHAR(255) NOT NULL,
+    `initial_status` VARCHAR(32) NOT NULL,
+    `initial_attempt_count` INT NOT NULL DEFAULT 0,
+    `initial_next_attempt_at` DATETIME,
+    `initial_lease_token` VARCHAR(64),
+    `initial_lease_until` DATETIME,
+    `initial_sent_at` DATETIME,
+    `initial_error` TEXT,
+    `supplement_analysis_id` BIGINT,
+    `supplement_subject` VARCHAR(512),
+    `supplement_body` MEDIUMTEXT,
+    `supplement_message_id` VARCHAR(255) NOT NULL,
+    `supplement_status` VARCHAR(32) NOT NULL,
+    `supplement_attempt_count` INT NOT NULL DEFAULT 0,
+    `supplement_next_attempt_at` DATETIME,
+    `supplement_lease_token` VARCHAR(64),
+    `supplement_lease_until` DATETIME,
+    `supplement_sent_at` DATETIME,
+    `supplement_error` TEXT,
+    `row_version` BIGINT NOT NULL DEFAULT 0,
+    `gmt_create` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `gmt_modify` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_sw_alert_obligation_event_recipient` (`event_key`,`recipient_hash`),
+    UNIQUE KEY `uk_sw_alert_obligation_open_episode` (`open_episode_key`),
+    KEY `idx_sw_alert_initial_dispatch` (`initial_status`,`initial_next_attempt_at`),
+    KEY `idx_sw_alert_supplement_dispatch` (`supplement_status`,`supplement_next_attempt_at`),
+    KEY `idx_sw_alert_demand` (`analysis_demand_id`,`supplement_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='异动提醒初始及技术分析补充投递义务';
+
+-- 股票盯盘：单股 FC 论点证伪卡
 CREATE TABLE IF NOT EXISTS `stock_watch_fc_card` (
     `id`                  BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
     `symbol`              VARCHAR(16)  NOT NULL                COMMENT '股票代码',
@@ -154,3 +491,98 @@ CREATE TABLE IF NOT EXISTS `stock_watch_fc_card` (
     KEY `idx_sw_fc_card_symbol_status` (`symbol`, `market`, `activation_status`),
     KEY `idx_sw_fc_card_enabled` (`enabled`, `symbol`, `market`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='股票盯盘单股FC论点证伪卡';
+
+-- 高位价格失效离线前瞻研究账本。不得连接模型结论、通知或交易动作。
+CREATE TABLE IF NOT EXISTS `stock_watch_price_failure_state` (
+    `rule_version` VARCHAR(96) NOT NULL,
+    `rule_spec_hash` VARCHAR(64) NOT NULL,
+    `rule_spec_json` MEDIUMTEXT NOT NULL,
+    `bootstrap_observation_id` BIGINT NOT NULL,
+    `last_observation_id` BIGINT NOT NULL,
+    `row_version` BIGINT NOT NULL DEFAULT 0,
+    `started_at` DATETIME NOT NULL,
+    `gmt_create` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `gmt_modify` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`rule_version`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='价格失效前瞻研究规则及游标';
+
+CREATE TABLE IF NOT EXISTS `stock_watch_price_failure_assessment` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `rule_version` VARCHAR(96) NOT NULL,
+    `rule_spec_hash` VARCHAR(64) NOT NULL,
+    `observation_id` BIGINT NOT NULL,
+    `symbol` VARCHAR(16) NOT NULL,
+    `market` VARCHAR(8) NOT NULL,
+    `stock_name` VARCHAR(128),
+    `source_date` VARCHAR(16) NOT NULL,
+    `source_time_epoch_ms` BIGINT NOT NULL,
+    `available_time_epoch_ms` BIGINT NOT NULL,
+    `evaluated_at` DATETIME NOT NULL,
+    `eligible` TINYINT NOT NULL,
+    `high_position` TINYINT NOT NULL,
+    `active_turnover` TINYINT NOT NULL,
+    `current_not_collapsed` TINYINT NOT NULL,
+    `price_shape_triggered` TINYINT NOT NULL,
+    `flow_data_complete` TINYINT NOT NULL,
+    `strong_outflow` TINYINT NOT NULL,
+    `shape_code` VARCHAR(64) NOT NULL,
+    `stratum` VARCHAR(64) NOT NULL,
+    `signal_price` DECIMAL(18,6),
+    `feature_snapshot_json` MEDIUMTEXT NOT NULL,
+    `exclusion_reason` VARCHAR(128),
+    `gmt_create` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_sw_pf_assessment_observation` (`rule_version`,`observation_id`),
+    KEY `idx_sw_pf_assessment_control` (`rule_version`,`market`,`source_date`,`source_time_epoch_ms`),
+    KEY `idx_sw_pf_assessment_shape` (`rule_version`,`price_shape_triggered`,`source_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='每条新事实的冻结价格失效评估';
+
+CREATE TABLE IF NOT EXISTS `stock_watch_price_failure_ledger` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `sample_key` VARCHAR(64) NOT NULL,
+    `signal_day_key` VARCHAR(192),
+    `rule_version` VARCHAR(96) NOT NULL,
+    `rule_spec_hash` VARCHAR(64) NOT NULL,
+    `sample_role` VARCHAR(16) NOT NULL,
+    `matched_signal_id` BIGINT,
+    `origin_assessment_id` BIGINT NOT NULL,
+    `origin_observation_id` BIGINT NOT NULL,
+    `symbol` VARCHAR(16) NOT NULL,
+    `market` VARCHAR(8) NOT NULL,
+    `stock_name` VARCHAR(128),
+    `stratum` VARCHAR(64) NOT NULL,
+    `source_date` VARCHAR(16) NOT NULL,
+    `source_time_epoch_ms` BIGINT NOT NULL,
+    `available_time_epoch_ms` BIGINT NOT NULL,
+    `available_at` DATETIME NOT NULL,
+    `signal_price` DECIMAL(18,6),
+    `feature_snapshot_json` MEDIUMTEXT NOT NULL,
+    `match_score` DECIMAL(18,8),
+    `controls_finalized` TINYINT(1) NOT NULL DEFAULT 0,
+    `status` VARCHAR(32) NOT NULL,
+    `entry_observation_id` BIGINT,
+    `entry_source_time_epoch_ms` BIGINT,
+    `entry_source_date` VARCHAR(16),
+    `entry_price` DECIMAL(18,6),
+    `t1_trade_date` VARCHAR(16),
+    `t1_open` DECIMAL(18,6),
+    `t1_high` DECIMAL(18,6),
+    `t1_low` DECIMAL(18,6),
+    `t1_close` DECIMAL(18,6),
+    `t1_max_drawdown_pct` DECIMAL(12,6),
+    `t1_close_return_pct` DECIMAL(12,6),
+    `t1_gap_pct` DECIMAL(12,6),
+    `t1_max_upside_pct` DECIMAL(12,6),
+    `t1_drawdown_5_hit` TINYINT,
+    `data_quality_reason` VARCHAR(128),
+    `row_version` BIGINT NOT NULL DEFAULT 0,
+    `matured_at` DATETIME,
+    `gmt_create` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `gmt_modify` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_sw_pf_ledger_sample` (`sample_key`),
+    UNIQUE KEY `uk_sw_pf_ledger_signal_day` (`signal_day_key`),
+    KEY `idx_sw_pf_ledger_pending` (`rule_version`,`status`),
+    KEY `idx_sw_pf_ledger_controls` (`matched_signal_id`,`sample_role`),
+    KEY `idx_sw_pf_ledger_control_reconcile` (`rule_version`,`sample_role`,`controls_finalized`,`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='价格失效信号、匹配对照及T+1结果';
