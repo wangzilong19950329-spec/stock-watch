@@ -2631,7 +2631,7 @@ public class StockWatchMonitorService {
         if (StringUtils.hasText(configuredStateFile)) {
             return Paths.get(expandHome(configuredStateFile));
         }
-        return Paths.get(System.getProperty("user.home"), ".aimeeting-room", "stock-watch-monitor-state.json");
+        return Paths.get(System.getProperty("user.home"), ".stock-watch", "stock-watch-monitor-state.json");
     }
 
     private String expandHome(String path) {

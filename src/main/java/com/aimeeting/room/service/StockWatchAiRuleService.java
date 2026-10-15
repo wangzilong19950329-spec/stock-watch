@@ -302,7 +302,7 @@ public class StockWatchAiRuleService {
         if (StringUtils.hasText(configuredStoreFile)) {
             return Paths.get(expandHome(configuredStoreFile)).toAbsolutePath().normalize();
         }
-        return Paths.get(System.getProperty("user.home"), ".aimeeting-room", "stock-watch-ai-rules.json");
+        return Paths.get(System.getProperty("user.home"), ".stock-watch", "stock-watch-ai-rules.json");
     }
 
     private String expandHome(String path) {

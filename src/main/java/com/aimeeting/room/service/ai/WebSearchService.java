@@ -76,7 +76,7 @@ public class WebSearchService {
     private boolean deepseekWebAllowScriptFallback;
     @Value("${ai.search.deepseek-web.timeout-seconds:150}")
     private int deepseekWebTimeoutSeconds;
-    @Value("${ai.search.deepseek-web.bridge-url:http://127.0.0.1:8789/search}")
+    @Value("${ai.search.deepseek-web.bridge-url:http://127.0.0.1:8790/search}")
     private String deepseekWebBridgeUrl;
     @Value("${ai.search.deepseek-web.connect-timeout-seconds:10}")
     private int deepseekWebConnectTimeoutSeconds;

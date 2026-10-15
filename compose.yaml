@@ -20,8 +20,8 @@ services:
       STOCK_WATCH_DELIVERY_ENABLED: "false"
       STOCK_WATCH_PRICE_FAILURE_RESEARCH_ENABLED: "false"
       STOCK_WATCH_M30_ENABLED: "false"
-      STOCK_WATCH_TECH_BRIDGE_URL: ${STOCK_WATCH_TECH_BRIDGE_URL:-http://host.docker.internal:8791/search}
-      STOCK_WATCH_AI_RULES_BRIDGE_URL: ${STOCK_WATCH_AI_RULES_BRIDGE_URL:-http://host.docker.internal:8791/search}
+      STOCK_WATCH_TECH_BRIDGE_URL: ${STOCK_WATCH_TECH_BRIDGE_URL:-http://host.docker.internal:8790/search}
+      STOCK_WATCH_AI_RULES_BRIDGE_URL: ${STOCK_WATCH_AI_RULES_BRIDGE_URL:-http://host.docker.internal:8790/search}
       DEEPSEEK_OPENAI_FACADE_API_KEY: ${DEEPSEEK_OPENAI_FACADE_API_KEY:-}
     extra_hosts:
       - host.docker.internal:host-gateway

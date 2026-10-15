@@ -63,14 +63,22 @@ bash scripts/start-bridge.sh
 它默认监听 `127.0.0.1:8790`，使用 `~/.stock-watch/` 下的专用 Profile 和会话文件。首次使用需在专用
 Chrome Profile 中手工登录 DeepSeek。不要指向日常浏览器 Profile，也不要把调试端口暴露到公网。
 
-仓库内的 Compose 默认复用宿主机已运行的 `http://host.docker.internal:8791/search`，但不复制其凭据。
-如 Bridge 开启认证，需要在启动 Compose 时通过环境变量传入已有 Key：
+仓库内的 Compose 默认连接本项目宿主机 Bridge `http://host.docker.internal:8790/search`，不复用源项目的
+8791 Bridge、Cookie 或浏览器 Profile。供 Docker 容器访问时，Bridge 必须绑定宿主机并启用认证：
+
+```bash
+DEEPSEEK_WEB_BRIDGE_HOST=0.0.0.0 \
+DEEPSEEK_OPENAI_FACADE_API_KEY='...' \
+bash scripts/start-bridge.sh
+```
+
+启动 Compose 时传入同一个 Key：
 
 ```bash
 DEEPSEEK_OPENAI_FACADE_API_KEY='...' docker compose up -d
 ```
 
-也可用 `STOCK_WATCH_TECH_BRIDGE_URL` 和 `STOCK_WATCH_AI_RULES_BRIDGE_URL` 指向另一个 Bridge。
+也可用 `STOCK_WATCH_TECH_BRIDGE_URL` 和 `STOCK_WATCH_AI_RULES_BRIDGE_URL` 指向另一个独立 Bridge。
 Bridge 进程在线不代表 DeepSeek 登录态、账号容量或真实回答已经可用。
 
 ## MySQL（可选）

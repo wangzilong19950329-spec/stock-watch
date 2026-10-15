@@ -185,7 +185,7 @@ public class StockWatchTechnicalAnalysisService {
     @Value("${stock-watch.technical-analysis.context-rotate-ratio:1.0}")
     private double contextRotateRatio;
 
-    @Value("${stock-watch.technical-analysis.bridge-url:http://127.0.0.1:8791/search}")
+    @Value("${stock-watch.technical-analysis.bridge-url:http://127.0.0.1:8790/search}")
     private String bridgeUrl;
 
     @Value("${stock-watch.deepseek-web.api-key:${DEEPSEEK_OPENAI_FACADE_API_KEY:}}")

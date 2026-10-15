@@ -46,7 +46,7 @@ public class StockWatchAiJudgeService {
     private final StockWatchAnalysisTaskService analysisTaskService;
     private final StockWatchBridgeAdmissionService bridgeAdmissionService;
 
-    @Value("${stock-watch.ai-rules.bridge-url:http://127.0.0.1:8791/search}")
+    @Value("${stock-watch.ai-rules.bridge-url:http://127.0.0.1:8790/search}")
     private String bridgeUrl;
 
     @Value("${stock-watch.ai-rules.bridge-connect-timeout-seconds:10}")

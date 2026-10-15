@@ -114,6 +114,20 @@ for relative in standalone_runtime_paths:
 package_json = (ROOT / "package.json").read_text("utf-8")
 assert '"bridge": "bash scripts/start-bridge.sh"' in package_json
 
+standalone_java_runtime_paths = (
+    "src/main/java/com/aimeeting/room/service/StockWatchAiRuleService.java",
+    "src/main/java/com/aimeeting/room/service/StockWatchMonitorService.java",
+    "src/main/java/com/aimeeting/room/service/StockWatchTechnicalAnalysisService.java",
+    "src/main/java/com/aimeeting/room/service/StockWatchRuntimeStatusService.java",
+    "src/main/java/com/aimeeting/room/service/StockWatchAiJudgeService.java",
+    "src/main/java/com/aimeeting/room/service/ai/WebSearchService.java",
+)
+for relative in standalone_java_runtime_paths:
+    text = (ROOT / relative).read_text("utf-8")
+    assert ".aimeeting-room" not in text, relative
+    assert "127.0.0.1:8791" not in text, relative
+    assert "127.0.0.1:8789" not in text, relative
+
 compose = (ROOT / "compose.yaml").read_text("utf-8")
 for expected in (
     "name: stock-watch-standalone-v2",
@@ -121,6 +135,7 @@ for expected in (
     "stock-watch-standalone-v2-data",
     "127.0.0.1:3017:8117",
     "127.0.0.1:8117:8117",
+    "http://host.docker.internal:8790/search",
 ):
     assert expected in compose, expected
 for flag in (
